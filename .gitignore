@@ -1,0 +1,13 @@
+# Ignore environment files and local secrets
+.env
+server/.env
+
+# Node modules and build outputs
+node_modules/
+client/node_modules/
+client/dist/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
