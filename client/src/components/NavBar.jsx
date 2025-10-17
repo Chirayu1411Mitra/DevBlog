@@ -48,9 +48,8 @@ const Navbar = () => {
       <div className="brand">
         <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}>
           <span className="logo"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 3L19 12L5 21V3Z" fill="var(--accent)"/></svg></span>
-          <h1 style={{ margin: 0, marginLeft: 10 }}>BlogSpace</h1>
+          <h1 style={{ margin: 0, marginLeft: 10 }}>DevBlog</h1>
         </Link>
-        <Link to="/" style={{ marginLeft: 12 }}>Home</Link>
       </div>
 
       <div className="nav-ctas" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -61,9 +61,7 @@ a {
   text-decoration: inherit;
   transition: color 0.25s;
 }
-a:hover {
-  color: var(--accent);
-}
+
 
 /* --- Navbar --- */
 nav {
