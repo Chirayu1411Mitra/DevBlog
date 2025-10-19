@@ -17,8 +17,19 @@ const LoginPage = () => {
   const toast = useToast();
 
   const handleGitHubLogin = () => {
-    window.location.href = `${API_BASE_URL.replace('/api', '')}/api/auth/github`;
-  };
+  // Log the base URL being used (optional, but good for debug)
+  console.log('Using API_BASE_URL:', API_BASE_URL);
+
+  // Construct the target URL
+  const targetUrl = `${API_BASE_URL.replace('/api', '')}/api/auth/github`;
+
+  // Log the URL we are trying to redirect to
+  console.log('Attempting redirect to:', targetUrl);
+
+  // Perform the redirect ONCE
+  window.location.href = targetUrl;
+}
+
 
   const saveTokenAndRedirect = (token) => {
     localStorage.setItem('token', token);
