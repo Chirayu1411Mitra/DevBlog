@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:6969/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://devblog-b.onrender.com/api';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -31,7 +31,7 @@ const LoginPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const api = (API_BASE_URL || 'http://localhost:6969/api').replace(/\/$/, '');
+      const api = (API_BASE_URL || 'https://devblog-b.onrender.com/api').replace(/\/$/, '');
       const res = await axios.post(`${api}/auth/login`, { email, password });
       saveTokenAndRedirect(res.data.token);
     } catch (err) {

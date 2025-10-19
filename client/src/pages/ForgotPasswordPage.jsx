@@ -14,7 +14,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       // default to localhost server used by this project when VITE_API_URL is not provided
-      const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
+      const api = (import.meta.env.VITE_API_URL || 'https://devblog-b.onrender.com/api').replace(/\/$/, '');
       await axios.post(`${api}/auth/forgot`, { email });
       setSent(true);
       toast.success('If that email exists, a reset link has been sent');

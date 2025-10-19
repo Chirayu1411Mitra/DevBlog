@@ -17,7 +17,7 @@ export default function EditPostPage(){
   useEffect(() => {
     const fetch = async () => {
       try {
-        const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
+        const api = (import.meta.env.VITE_API_URL || 'https://devblog-b.onrender.com/api').replace(/\/$/, '');
         const token = localStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await axios.get(`${api}/posts/${id}`, { headers });
@@ -42,7 +42,7 @@ export default function EditPostPage(){
   const save = async (publish = false) => {
     setSaving(true);
     try {
-      const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
+      const api = (import.meta.env.VITE_API_URL || 'https://devblog-b.onrender.com/api').replace(/\/$/, '');
       const token = localStorage.getItem('token');
   await axios.put(`${api}/posts/${id}`, { title, content, draft: publish ? false : true, tags }, { headers: { Authorization: `Bearer ${token}` } });
       toast.success(publish ? 'Published' : 'Saved draft');

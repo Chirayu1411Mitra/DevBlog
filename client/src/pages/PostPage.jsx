@@ -6,7 +6,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useToast } from '../components/ToastContext';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
+const API_URL = import.meta.env.VITE_API_URL ?? 'https://devblog-b.onrender.com/api';
 
 const PostPage = () => {
   const [post, setPost] = useState(null);

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
+const API_URL = import.meta.env.VITE_API_URL ?? 'https://devblog-b.onrender.com/api';
 
 const HomePage = () => {
   const [posts, setPosts] = useState([]);

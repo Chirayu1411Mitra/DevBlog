@@ -16,7 +16,7 @@ export default function ResetPasswordPage() {
     if (!token) return;
     const check = async () => {
       try {
-        const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
+        const api = (import.meta.env.VITE_API_URL || 'https://devblog-b.onrender.com/api').replace(/\/$/, '');
         await axios.get(`${api}/auth/reset/${token}`);
         setValid(true);
       } catch (err) {
@@ -31,7 +31,7 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     if (password !== confirm) return toast.error('Passwords do not match');
     try {
-      const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
+      const api = (import.meta.env.VITE_API_URL || 'https://devblog-b.onrender.com/api').replace(/\/$/, '');
       await axios.post(`${api}/auth/reset/${token}`, { password });
       toast.success('Password reset, please login');
       navigate('/login');

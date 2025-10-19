@@ -5,7 +5,7 @@ import { useToast } from '../components/ToastContext';
 import TagInput from '../components/TagInput';
 
 // Backend API URL (set VITE_API_URL in production). Fallback to localhost for dev.
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
+const API_URL = import.meta.env.VITE_API_URL ?? 'https://devblog-b.onrender.com/api';
 
 const CreatePostPage = () => {
   const [title, setTitle] = useState('');

@@ -10,7 +10,7 @@ export default function TagPage(){
   useEffect(() => {
     const fetch = async () => {
       try {
-        const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
+        const api = (import.meta.env.VITE_API_URL || 'https://devblog-b.onrender.com/api').replace(/\/$/, '');
         const res = await axios.get(`${api}/posts/tag/${encodeURIComponent(tag)}`);
         setPosts(res.data);
       } catch (err) {

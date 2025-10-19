@@ -13,7 +13,7 @@ export default function MyDraftsPage(){
     const fetch = async () => {
       if (!token) { navigate('/login'); return; }
       try {
-        const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
+        const api = (import.meta.env.VITE_API_URL || 'https://devblog-b.onrender.com/api').replace(/\/$/, '');
         const res = await axios.get(`${api}/posts/my-drafts`, { headers: { Authorization: `Bearer ${token}` } });
         setDrafts(res.data);
       } catch (err) {
@@ -26,7 +26,7 @@ export default function MyDraftsPage(){
 
   const publish = async (id) => {
     try {
-      const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
+      const api = (import.meta.env.VITE_API_URL || 'https://devblog-b.onrender.com/api').replace(/\/$/, '');
       const token = localStorage.getItem('token');
       await axios.put(`${api}/posts/${id}/publish`, {}, { headers: { Authorization: `Bearer ${token}` } });
       toast.success('Published');

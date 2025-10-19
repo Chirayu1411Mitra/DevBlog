@@ -17,7 +17,7 @@ export default function RegisterPage(){
     if (loading) return;
     setLoading(true);
     try {
-      const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
+      const api = (import.meta.env.VITE_API_URL || 'https://devblog-b.onrender.com/api').replace(/\/$/, '');
       await axios.post(`${api}/auth/register`, { username, email, password });
       toast.success('Registered successfully. Please login.');
       navigate('/login');
@@ -34,7 +34,7 @@ export default function RegisterPage(){
       <div className="auth-card">
         <h2>Join BlogSpace</h2>
         <p style={{ textAlign: 'center', color: 'var(--muted)' }}>Create your account and start sharing your stories</p>
-        <button className="oauth-btn" onClick={() => window.location.href = ((import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '') + '/auth/github')}>Sign up with GitHub</button>
+        <button className="oauth-btn" onClick={() => window.location.href = ((import.meta.env.VITE_API_URL || 'https://devblog-b.onrender.com/api').replace(/\/$/, '') + '/auth/github')}>Sign up with GitHub</button>
         <div className="auth-divider">OR CONTINUE WITH EMAIL</div>
         <form onSubmit={handleRegister} className="auth-form">
           <label>Full Name</label>
