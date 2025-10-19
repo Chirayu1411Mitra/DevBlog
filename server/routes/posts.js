@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
     try {
         const result = await db.query(
-            'SELECT posts.*, users.username, users.avatar_url FROM posts JOIN users ON posts.author_id = users.id WHERE posts.draft = false ORDER BY posts.created_at DESC'
+            'SELECT posts.*, users.username, users.avatar_url FROM posts JOIN users ON posts.user_id = users.id WHERE posts.draft = false ORDER BY posts.created_at DESC'
         );
         res.json(result.rows);
     } catch (err) {
@@ -32,10 +32,10 @@ router.get('/search', async (req, res) => {
         let params;
         if (tag) {
             // Use Postgres array containment to match posts that have the tag
-            sql = 'SELECT posts.*, users.username, users.avatar_url FROM posts JOIN users ON posts.author_id = users.id WHERE (posts.title ILIKE $1 OR posts.content ILIKE $1) AND posts.draft = false AND posts.tags @> ARRAY[$2]::text[] ORDER BY posts.created_at DESC';
+            sql = 'SELECT posts.*, users.username, users.avatar_url FROM posts JOIN users ON posts.user_id = users.id WHERE (posts.title ILIKE $1 OR posts.content ILIKE $1) AND posts.draft = false AND posts.tags @> ARRAY[$2]::text[] ORDER BY posts.created_at DESC';
             params = [searchTerm, tag];
         } else {
-            sql = 'SELECT posts.*, users.username, users.avatar_url FROM posts JOIN users ON posts.author_id = users.id WHERE (posts.title ILIKE $1 OR posts.content ILIKE $1) AND posts.draft = false ORDER BY posts.created_at DESC';
+            sql = 'SELECT posts.*, users.username, users.avatar_url FROM posts JOIN users ON posts.user_id = users.id WHERE (posts.title ILIKE $1 OR posts.content ILIKE $1) AND posts.draft = false ORDER BY posts.created_at DESC';
             params = [searchTerm];
         }
         const result = await db.query(sql, params);
@@ -50,7 +50,7 @@ router.get('/search', async (req, res) => {
 router.get('/my-drafts', protect, async (req, res) => {
     try {
         const userId = req.user.id;
-        const result = await db.query('SELECT * FROM posts WHERE author_id = $1 AND draft = true ORDER BY created_at DESC', [userId]);
+        const result = await db.query('SELECT * FROM posts WHERE user_id = $1 AND draft = true ORDER BY created_at DESC', [userId]);
         res.json(result.rows);
     } catch (err) {
         console.error(err.message);
@@ -63,7 +63,7 @@ router.get('/tag/:tag', async (req, res) => {
     try {
         const { tag } = req.params;
         const result = await db.query(
-            'SELECT posts.*, users.username, users.avatar_url FROM posts JOIN users ON posts.author_id = users.id WHERE posts.draft = false AND posts.tags @> ARRAY[$1]::text[] ORDER BY posts.created_at DESC',
+            'SELECT posts.*, users.username, users.avatar_url FROM posts JOIN users ON posts.user_id = users.id WHERE posts.draft = false AND posts.tags @> ARRAY[$1]::text[] ORDER BY posts.created_at DESC',
             [tag]
         );
         res.json(result.rows);
@@ -85,7 +85,7 @@ router.get('/:id', async (req, res) => {
         }
 
         const result = await db.query(
-            'SELECT posts.*, users.username, users.avatar_url FROM posts JOIN users ON posts.author_id = users.id WHERE posts.id = $1',
+            'SELECT posts.*, users.username, users.avatar_url FROM posts JOIN users ON posts.user_id = users.id WHERE posts.id = $1',
             [intId]
         );
         if (result.rows.length === 0) {
@@ -107,7 +107,7 @@ router.get('/:id', async (req, res) => {
             try {
                 const jwt = require('jsonwebtoken');
                 const payload = jwt.verify(token, process.env.JWT_SECRET);
-                if (!payload || payload.id !== post.author_id) {
+                if (!payload || payload.id !== post.user_id) {
                     return res.status(404).json({ message: 'Post Not Found' });
                 }
                 // authorized, return the draft
@@ -141,7 +141,7 @@ router.post('/', protect, async (req, res) => {
     tagsArr = Array.from(new Set(tagsArr));
 
         const newPost = await db.query(
-            'INSERT INTO posts (title, content, author_id, draft, tags) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            'INSERT INTO posts (title, content, user_id, draft, tags) VALUES ($1, $2, $3, $4, $5) RETURNING *',
             [title, content, authorId, !!draft, tagsArr]
         );
         res.status(200).json(newPost.rows[0]);
@@ -158,7 +158,7 @@ router.put('/:id/publish', protect, async (req, res) => {
         const intId = parseInt(id, 10);
         if (Number.isNaN(intId)) return res.status(404).json({ message: 'Draft not found' });
         const userId = req.user.id;
-        const updated = await db.query('UPDATE posts SET draft = false, updated_at = now() WHERE id = $1 AND author_id = $2 RETURNING *', [intId, userId]);
+        const updated = await db.query('UPDATE posts SET draft = false, updated_at = now() WHERE id = $1 AND user_id = $2 RETURNING *', [intId, userId]);
         if (updated.rows.length === 0) return res.status(404).json({ message: 'Draft not found' });
         res.json(updated.rows[0]);
     } catch (err) {
@@ -197,7 +197,7 @@ router.put('/:id', protect, async (req, res) => {
 
         params.push(intId);
         params.push(userId);
-        const sql = `UPDATE posts SET ${fields.join(', ')}, updated_at = now() WHERE id = $${idx++} AND author_id = $${idx} RETURNING *`;
+        const sql = `UPDATE posts SET ${fields.join(', ')}, updated_at = now() WHERE id = $${idx++} AND user_id = $${idx} RETURNING *`;
         const updated = await db.query(sql, params);
         if (updated.rows.length === 0) return res.status(404).json({ message: 'Post not found or not authorized' });
         res.json(updated.rows[0]);
