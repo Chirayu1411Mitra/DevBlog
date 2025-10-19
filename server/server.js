@@ -4,7 +4,7 @@ const passport= require('passport');
 const path = require('path');
 // Load .env from the server folder (use __dirname so dotenv finds server/.env
 require('dotenv').config({ path: path.join(__dirname, '.env') });
-console.log('DATABASE_URL loaded:', process.env.DATABASE_URL);
+
 const app = express();
 
 require('./config/passport')(passport);
