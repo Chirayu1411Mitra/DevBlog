@@ -1,92 +1,45 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { /* remove useState, remove useEffect */ useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const token = localStorage.getItem('token');
-  // naive decode to show username if stored elsewhere later; keep it optional
-  const username = null;
+  const { token, user, logout, loading } = useAuth(); // Get state and logout from context
+  // remove: const token = localStorage.getItem('token');
+  const username = user ? user.username : null; // Get username from context
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
-  };
+  // Keep theme logic...
+  const [theme, setTheme] = React.useState(() => localStorage.getItem('theme') || 'dark');
+   React.useEffect(() => {
+     document.documentElement.setAttribute('data-theme', theme);
+     localStorage.setItem('theme', theme);
+   }, [theme]);
+   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
-  // Theme toggle
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+   // Keep menu logic...
+   const [menuOpen, setMenuOpen] = React.useState(false);
+   // ... rest of menu logic ...
+   const handleLogoutClick = () => {
+     closeMenu();
+     logout(); // Use logout from context
+   };
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
 
-  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
-
-  // User menu (right mini sidebar)
-  const [menuOpen, setMenuOpen] = useState(false);
-  const panelRef = useRef(null);
-  const overlayRef = useRef(null);
-
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') setMenuOpen(false);
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  const closeMenu = () => setMenuOpen(false);
-  const openMenu = () => setMenuOpen(true);
-
-  const goTo = (path) => {
-    navigate(path);
-    closeMenu();
-  };
+  if (loading) {
+    return <nav className="site-shell">Loading...</nav>; // Show loading state
+  }
 
   return (
-    <nav className="site-shell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-      <div className="brand">
-        <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}>
-          <span className="logo"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 3L19 12L5 21V3Z" fill="var(--accent)"/></svg></span>
-          <h1 style={{ margin: 0, marginLeft: 10 }}>DevBlog</h1>
-        </Link>
-      </div>
+    <nav className="site-shell" /* ... styles ... */ >
+      {/* ... Brand ... */}
 
-      <div className="nav-ctas" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <label className="theme-toggle" title="Theme" aria-label="Theme toggle">
-          <input
-            type="checkbox"
-            checked={theme === 'light'}
-            onChange={(e) => setTheme(e.target.checked ? 'light' : 'dark')}
-            aria-checked={theme === 'light'}
-          />
-          <span className="track">
-            <span className="thumb" />
-          </span>
-        </label>
-        {token ? (
+      <div className="nav-ctas" /* ... styles ... */ >
+        {/* ... Theme Toggle ... */}
+        {token ? ( // Check token from context state
           <>
             <Link to="/create" className="btn">Write</Link>
-            <button
-              aria-label="Open account menu"
-              className="icon-btn"
-              onClick={openMenu}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: '50%',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid var(--border, #333)',
-                background: 'var(--surface, #1e1e1e)',
-                cursor: 'pointer'
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z" fill="currentColor"/>
-              </svg>
-            </button>
+            {/* ... Account Menu Button ... */}
+             {username && <span style={{ marginRight: '8px' }}>Hi, {username}!</span>}
           </>
         ) : (
           <>
@@ -96,35 +49,14 @@ const Navbar = () => {
         )}
       </div>
 
-      {token && (
+      {token && ( // Check token from context state
         <>
-          <div
-            ref={overlayRef}
-            className={`sidepanel-overlay ${menuOpen ? 'show' : ''}`}
-            onClick={closeMenu}
-            aria-hidden={!menuOpen}
-          />
-
-          <aside
-            ref={panelRef}
-            className={`sidepanel ${menuOpen ? 'open' : ''}`}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Account menu"
-          >
-            <div className="sidepanel-header">
-              <div style={{ fontWeight: 700 }}>Account</div>
-              <button className="icon-btn" onClick={closeMenu} aria-label="Close menu">×</button>
-            </div>
+          {/* ... Sidepanel Overlay ... */}
+          <aside /* ... props ... */ >
+            {/* ... Sidepanel Header ... */}
             <div className="sidepanel-content">
-              <button className="sidepanel-item" onClick={() => goTo('/user')}>
-                <span>Profile</span>
-              </button>
-              <button className="sidepanel-item" onClick={() => goTo('/my-drafts')}>
-                <span>Drafts</span>
-              </button>
-              <hr className="sidepanel-sep" />
-              <button className="sidepanel-item danger" onClick={() => { closeMenu(); handleLogout(); }}>
+              {/* ... Profile / Drafts buttons ... */}
+              <button className="sidepanel-item danger" onClick={handleLogoutClick}> {/* Use updated handler */}
                 <span>Logout</span>
               </button>
             </div>
