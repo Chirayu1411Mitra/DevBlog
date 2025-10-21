@@ -161,7 +161,7 @@ router.get('/my-posts', protect, async (req, res) => {
     try {
         const userId = req.user.id;
         // Return only published posts for the profile view; drafts are returned via the dedicated my-drafts endpoint
-        const result = await db.query('SELECT * FROM posts WHERE author_id = $1 AND draft = false ORDER BY created_at DESC', [userId]);
+        const result = await db.query('SELECT * FROM posts WHERE user_id = $1 AND draft = false ORDER BY created_at DESC', [userId]);
         res.json(result.rows);
     } catch (err) {
         console.error('Get my posts error:', err.message || err);
