@@ -3,7 +3,7 @@ const cors= require('cors');
 const passport= require('passport');
 const path = require('path');
 // Load .env from the server folder (use __dirname so dotenv finds server/.env
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+//require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 
