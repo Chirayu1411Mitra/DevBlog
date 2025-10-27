@@ -4,10 +4,17 @@
 const path = require('path');
 const fs = require('fs');
 const envPath = path.join(__dirname, '.env');
-const envContent = fs.readFileSync(envPath, 'utf16le');
 const dotenv = require('dotenv');
-const parsed = dotenv.parse(envContent);
-process.env = { ...process.env, ...parsed };
+
+// Check if .env exists and load it with correct encoding
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf16le');
+  const parsed = dotenv.parse(envContent);
+  process.env = { ...process.env, ...parsed };
+} else {
+  // For deployment environments like Render, env vars are set directly
+  dotenv.config();
+}
 
 // 2. Now, load all your other modules
 const express = require('express');
