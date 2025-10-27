@@ -1,13 +1,21 @@
 // Load .env from the server folder (use __dirname so dotenv finds server/.env
-//require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const express = require('express');
-const cors= require('cors');
-const passport= require('passport');
+// 1. Load path and dotenv AT THE VERY TOP
 const path = require('path');
+const fs = require('fs');
+const envPath = path.join(__dirname, '.env');
+const envContent = fs.readFileSync(envPath, 'utf16le');
+const dotenv = require('dotenv');
+const parsed = dotenv.parse(envContent);
+process.env = { ...process.env, ...parsed };
 
+// 2. Now, load all your other modules
+const express = require('express');
+const cors = require('cors');
+const passport = require('passport');
+
+// --- Rest of your code ---
 const app = express();
-
 require('./config/passport')(passport);
 app.use(passport.initialize());
 app.use(cors({

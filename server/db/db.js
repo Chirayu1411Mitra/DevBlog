@@ -1,6 +1,5 @@
 const { Pool } = require('pg');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -9,7 +8,10 @@ if (!connectionString) {
 	process.exit(1);
 }
 
-const pool = new Pool({ connectionString });
+const pool = new Pool({
+	connectionString,
+	ssl: { rejectUnauthorized: false }
+});
 
 // Test connection immediately so failures are noisy and actionable at startup.
 (async () => {
