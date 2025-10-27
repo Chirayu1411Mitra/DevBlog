@@ -24,7 +24,7 @@ const CreatePostPage = () => {
     }
 
     try {
-  const res = await axios.post(`${API_URL}/posts`, { title, content, draft: publish ? false : true, tags }, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await axios.post(`${API_URL}/posts`, { title, content, draft: publish ? false : true, tags }, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
       if (publish) {
         addToast('Post published!', { type: 'success' });
         navigate(`/post/${res.data.id}`);

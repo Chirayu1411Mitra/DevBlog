@@ -20,7 +20,7 @@ export default function EditPostPage(){
         const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
         const token = localStorage.getItem('token');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await axios.get(`${api}/posts/${id}`, { headers });
+        const res = await axios.get(`${api}/posts/${id}`, { headers, withCredentials: true });
   setTitle(res.data.title);
   setContent(res.data.content);
   setTags(Array.isArray(res.data.tags) ? res.data.tags : []);
@@ -44,7 +44,7 @@ export default function EditPostPage(){
     try {
       const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
       const token = localStorage.getItem('token');
-  await axios.put(`${api}/posts/${id}`, { title, content, draft: publish ? false : true, tags }, { headers: { Authorization: `Bearer ${token}` } });
+  await axios.put(`${api}/posts/${id}`, { title, content, draft: publish ? false : true, tags }, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
       toast.success(publish ? 'Published' : 'Saved draft');
       navigate(publish ? `/post/${id}` : '/my-drafts');
     } catch (err) {

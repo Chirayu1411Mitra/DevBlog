@@ -14,7 +14,7 @@ export default function MyDraftsPage(){
       if (!token) { navigate('/login'); return; }
       try {
         const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
-        const res = await axios.get(`${api}/posts/my-drafts`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await axios.get(`${api}/posts/my-drafts`, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
         setDrafts(res.data);
       } catch (err) {
         console.error(err);
@@ -28,7 +28,7 @@ export default function MyDraftsPage(){
     try {
       const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
       const token = localStorage.getItem('token');
-      await axios.put(`${api}/posts/${id}/publish`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.put(`${api}/posts/${id}/publish`, {}, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
       toast.success('Published');
       setDrafts((d) => d.filter(x => x.id !== id));
     } catch (err) {
