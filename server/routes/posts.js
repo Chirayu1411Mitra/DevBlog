@@ -152,7 +152,7 @@ router.post('/', protect, async (req, res) => {
 });
 
 // Publish a draft -> set draft = false
-router.put('/:id/publish', protect, async (req, res) => {
+router.post('/:id/publish', protect, async (req, res) => {
     try {
         const { id } = req.params;
         const intId = parseInt(id, 10);

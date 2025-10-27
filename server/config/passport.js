@@ -6,7 +6,9 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 module.exports = function (passport) {
         const callbackURL = process.env.SERVER_URL
             ? `${process.env.SERVER_URL}/api/auth/github/callback`
-            : `https://devblog-b.onrender.com/api/auth/github/callback`;
+            : (process.env.NODE_ENV === 'production'
+                ? `https://devblog-b.onrender.com/api/auth/github/callback`
+                : `http://localhost:6969/api/auth/github/callback`);
 
         // Helpful runtime logging for debugging OAuth issues
         console.log('Passport GitHub callback URL:', callbackURL);
