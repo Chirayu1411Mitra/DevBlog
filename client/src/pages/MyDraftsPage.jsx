@@ -28,7 +28,7 @@ export default function MyDraftsPage(){
     try {
       const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
       const token = localStorage.getItem('token');
-      await axios.put(`${api}/posts/${id}/publish`, {}, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
+      await axios.post(`${api}/posts/${id}/publish`, {}, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
       toast.success('Published');
       setDrafts((d) => d.filter(x => x.id !== id));
     } catch (err) {

@@ -25,10 +25,47 @@ const passport = require('passport');
 const app = express();
 require('./config/passport')(passport);
 app.use(passport.initialize());
-app.use(cors({
-    origin: process.env.CLIENT_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5173' : false),
-    credentials: true
-}));
+
+// Robust CORS allowlist with normalized origins and preflight support
+const normalizeOrigin = (value) => {
+  if (!value) return '';
+  try {
+    const trimmed = String(value).trim();
+    // Remove trailing slashes for consistent comparisons
+    return trimmed.replace(/\/$/, '');
+  } catch (_) {
+    return '';
+  }
+};
+
+const envAllowed = (process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL || '')
+  .split(',')
+  .map(normalizeOrigin)
+  .filter(Boolean);
+
+const defaultDevOrigins = ['http://localhost:5173'];
+const allowlist = Array.from(new Set([...envAllowed, ...(process.env.NODE_ENV === 'development' ? defaultDevOrigins : [])]));
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, SSR)
+    if (!origin) return callback(null, true);
+    const normalized = normalizeOrigin(origin);
+    if (allowlist.includes(normalized)) {
+      return callback(null, true);
+    }
+    // Explicitly reject other origins
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
+  preflightContinue: false,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({extended: false}));
 
