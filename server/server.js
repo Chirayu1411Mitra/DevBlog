@@ -48,7 +48,7 @@ app.get('/api/debug/smtp-test', async (req, res) => {
     }
 });
 
-app.get('/', (rew, res)=>{
+app.get('/', (req, res)=>{
     res.send("Welcome")
 });
 

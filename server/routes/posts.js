@@ -132,19 +132,19 @@ router.post('/', protect, async (req, res) => {
         const { title, content, draft, tags } = req.body;
         const authorId = req.user.id;
 
-    // normalize tags: accept array or comma-separated string
-    let tagsArr = [];
-    if (Array.isArray(tags)) tagsArr = tags.map(String);
-    else if (typeof tags === 'string' && tags.trim() !== '') tagsArr = tags.split(',').map(t => t.trim()).filter(Boolean);
-    // normalize case and remove duplicates
-    tagsArr = tagsArr.map(t => t.toLowerCase()).filter(Boolean);
-    tagsArr = Array.from(new Set(tagsArr));
+        // normalize tags: accept array or comma-separated string
+        let tagsArr = [];
+        if (Array.isArray(tags)) tagsArr = tags.map(String);
+        else if (typeof tags === 'string' && tags.trim() !== '') tagsArr = tags.split(',').map(t => t.trim()).filter(Boolean);
+        // normalize case and remove duplicates
+        tagsArr = tagsArr.map(t => t.toLowerCase()).filter(Boolean);
+        tagsArr = Array.from(new Set(tagsArr));
 
         const newPost = await db.query(
             'INSERT INTO posts (title, content, user_id, draft, tags) VALUES ($1, $2, $3, $4, $5) RETURNING *',
             [title, content, authorId, !!draft, tagsArr]
         );
-        res.status(200).json(newPost.rows[0]);
+        res.status(201).json(newPost.rows[0]);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server error');
