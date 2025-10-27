@@ -20,11 +20,11 @@ const UserPage = () => {
 
     const fetch = async () => {
       try {
-        const me = await axios.get(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        const me = await axios.get(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
         setUser(me.data.user);
   setForm({ username: me.data.user.username || '', email: me.data.user.email || '' });
 
-        const myPosts = await axios.get(`${API_URL}/auth/my-posts`, { headers: { Authorization: `Bearer ${token}` } });
+        const myPosts = await axios.get(`${API_URL}/auth/my-posts`, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
         setPosts(myPosts.data);
       } catch (err) {
         console.error('Failed to load user page', err);
@@ -40,7 +40,7 @@ const UserPage = () => {
   // If passwordFlow.step === 2 we include newPassword in the update payload
   const payload = { ...form };
   if (passwordFlow.step === 2 && passwordFlow.newPassword) payload.password = passwordFlow.newPassword;
-  const res = await axios.put(`${API_URL}/auth/me`, payload, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await axios.put(`${API_URL}/auth/me`, payload, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
       setUser(res.data.user);
       setEditing(false);
       addToast('Profile updated', { type: 'success' });
@@ -58,7 +58,7 @@ const UserPage = () => {
         payload.password = passwordFlow.newPassword;
         payload.currentPassword = passwordFlow.current;
       }
-      const res = await axios.put(`${API_URL}/auth/me`, payload, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.put(`${API_URL}/auth/me`, payload, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
       setUser(res.data.user);
       setEditing(false);
       const changedPassword = (passwordFlow.step === 2 && passwordFlow.newPassword);
@@ -116,7 +116,7 @@ const UserPage = () => {
                     <input type="password" placeholder="Current password" value={passwordFlow.current} onChange={(e) => setPasswordFlow({ ...passwordFlow, current: e.target.value })} />
                     <button className="btn" type="button" onClick={async () => {
                       try {
-                        await axios.post(`${API_URL}/auth/verify-password`, { currentPassword: passwordFlow.current }, { headers: { Authorization: `Bearer ${token}` } });
+                        await axios.post(`${API_URL}/auth/verify-password`, { currentPassword: passwordFlow.current }, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
                         setPasswordFlow({ step: 2, current: passwordFlow.current, newPassword: '', confirm: '', verified: true });
                         addToast('Current password verified. Enter new password.', { type: 'success' });
                       } catch (err) {
