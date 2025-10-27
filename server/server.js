@@ -69,6 +69,15 @@ app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({extended: false}));
 
+// Compatibility shim: if client forgets the /api prefix, rewrite to /api/*
+app.use((req, _res, next) => {
+  const p = req.path || '';
+  if (!p.startsWith('/api/') && (p.startsWith('/posts') || p.startsWith('/auth'))) {
+    req.url = `/api${req.url}`;
+  }
+  next();
+});
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/posts', require('./routes/posts'));
 
