@@ -17,7 +17,10 @@ const LoginPage = () => {
   const toast = useToast();
 
   const handleGitHubLogin = () => {
-    window.location.href = `${API_BASE_URL.replace('/api', '')}/api/auth/github`;
+    const serverBase = (API_BASE_URL || '').replace(/\/api\/?$/, '');
+    // Build absolute backend URL for OAuth regardless of how VITE_API_URL is formatted
+    const target = `${serverBase}/api/auth/github`;
+    window.location.href = target;
   };
 
   const saveTokenAndRedirect = (token) => {

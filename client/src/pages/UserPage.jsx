@@ -167,6 +167,19 @@ const UserPage = () => {
                 <div key={p.id} className="post-item">
                   <h4>{p.title}</h4>
                   <div className="meta">{new Date(p.created_at).toLocaleString()}</div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                    <button className="btn" onClick={() => navigate(`/post/${p.id}/edit`)}>Edit</button>
+                    <button className="btn" onClick={async () => {
+                      try {
+                        await axios.delete(`${API_URL}/posts/${p.id}`, { headers: { Authorization: `Bearer ${token}` } });
+                        setPosts((list) => list.filter(x => x.id !== p.id));
+                        addToast('Post deleted', { type: 'success' });
+                      } catch (err) {
+                        console.error('Delete failed', err);
+                        addToast(err.response?.data?.message || 'Delete failed', { type: 'error' });
+                      }
+                    }}>Delete</button>
+                  </div>
                 </div>
               ))}
             </div>

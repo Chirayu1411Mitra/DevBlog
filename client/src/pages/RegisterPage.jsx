@@ -34,7 +34,10 @@ export default function RegisterPage(){
       <div className="auth-card">
         <h2>Join BlogSpace</h2>
         <p style={{ textAlign: 'center', color: 'var(--muted)' }}>Create your account and start sharing your stories</p>
-        <button className="oauth-btn" onClick={() => window.location.href = ((import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '') + '/auth/github')}>Sign up with GitHub</button>
+        <button className="oauth-btn" onClick={() => {
+          const base = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/api\/?$/, '');
+          window.location.href = `${base}/api/auth/github`;
+        }}>Sign up with GitHub</button>
         <div className="auth-divider">OR CONTINUE WITH EMAIL</div>
         <form onSubmit={handleRegister} className="auth-form">
           <label>Full Name</label>

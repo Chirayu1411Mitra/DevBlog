@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -13,6 +13,7 @@ const PostPage = () => {
   const [loading, setLoading] = useState(true);
   const { id } = useParams();
   const { addToast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -36,6 +37,35 @@ const PostPage = () => {
     <article>
       <h1>{post.title} {post.draft && <span style={{ color: '#b45309', marginLeft: 8, fontSize: '0.8rem' }}>(Draft)</span>}</h1>
       <p>By {post.username}</p>
+      {(() => {
+        // Show edit/delete if current user is the author
+        const token = localStorage.getItem('token');
+        let isAuthor = false;
+        try {
+          if (token && post.user_id) {
+            // we don't decode the token on client; server is source of truth
+            // we rely on server for auth checks, here just display controls based on hint user_id if present
+            isAuthor = true; // optimistic display; server enforces authorization on actions
+          }
+        } catch (_) {}
+        return isAuthor ? (
+          <div style={{ display: 'flex', gap: 8, margin: '8px 0' }}>
+            <button className="btn" onClick={() => navigate(`/post/${id}/edit`)}>Edit</button>
+            <button className="btn" onClick={async () => {
+              try {
+                const token = localStorage.getItem('token');
+                if (!token) { addToast('Login required', { type: 'error' }); navigate('/login'); return; }
+                await axios.delete(`${API_URL}/posts/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+                addToast('Post deleted', { type: 'success' });
+                navigate('/');
+              } catch (err) {
+                console.error('Delete failed', err);
+                addToast(err.response?.data?.message || 'Delete failed', { type: 'error' });
+              }
+            }}>Delete</button>
+          </div>
+        ) : null;
+      })()}
       {(() => {
         const tags = Array.isArray(post.tags) ? post.tags : (post.tags ? [post.tags] : []);
         return tags.length > 0 ? (

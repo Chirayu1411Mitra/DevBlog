@@ -207,5 +207,22 @@ router.put('/:id', protect, async (req, res) => {
     }
 });
 
+// DELETE a post (author only)
+router.delete('/:id', protect, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const intId = parseInt(id, 10);
+        if (Number.isNaN(intId)) return res.status(404).json({ message: 'Post not found or not authorized' });
+        const userId = req.user.id;
+
+        const del = await db.query('DELETE FROM posts WHERE id = $1 AND user_id = $2 RETURNING id', [intId, userId]);
+        if (del.rows.length === 0) return res.status(404).json({ message: 'Post not found or not authorized' });
+        res.status(204).send();
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
 module.exports = router;
 

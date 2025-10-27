@@ -44,7 +44,9 @@ const envAllowed = (process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL || '')
   .filter(Boolean);
 
 const defaultDevOrigins = ['http://localhost:5173'];
-const allowlist = Array.from(new Set([...envAllowed, ...(process.env.NODE_ENV === 'development' ? defaultDevOrigins : [])]));
+// Treat missing NODE_ENV as development locally
+const isDev = (process.env.NODE_ENV || '').toLowerCase() !== 'production';
+const allowlist = Array.from(new Set([...envAllowed, ...(isDev ? defaultDevOrigins : [])]));
 
 const corsOptions = {
   origin: (origin, callback) => {

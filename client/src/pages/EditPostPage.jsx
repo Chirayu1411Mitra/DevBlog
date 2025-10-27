@@ -44,9 +44,11 @@ export default function EditPostPage(){
     try {
       const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
       const token = localStorage.getItem('token');
-  await axios.put(`${api}/posts/${id}`, { title, content, draft: publish ? false : true, tags }, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
-      toast.success(publish ? 'Published' : 'Saved draft');
-      navigate(publish ? `/post/${id}` : '/my-drafts');
+      // If publish flag provided, change draft state; else only update title/content/tags
+      const payload = publish ? { title, content, draft: false, tags } : { title, content, tags };
+      await axios.put(`${api}/posts/${id}`, payload, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
+      toast.success(publish ? 'Published' : 'Saved changes');
+      navigate(`/post/${id}`);
     } catch (err) {
       console.error(err);
       toast.error('Failed to save');
@@ -68,7 +70,7 @@ export default function EditPostPage(){
   <label>Tags</label>
   <TagInput value={tags} onChange={setTags} />
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button className="btn" onClick={() => save(false)} disabled={saving}>{saving ? 'Saving...' : 'Save Draft'}</button>
+          <button className="btn" onClick={() => save(false)} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
           <button className="btn" onClick={() => save(true)} disabled={saving}>{saving ? 'Publishing...' : 'Publish'}</button>
         </div>
       </div>
