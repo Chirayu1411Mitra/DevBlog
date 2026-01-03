@@ -9,8 +9,12 @@ const envPath = path.join(__dirname, '.env');
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+  }
+} catch (err) {
+  console.warn('Could not create uploads directory (likely read-only filesystem). Uploads will not persist.');
 }
 
 // Check if .env exists and load it with correct encoding for Windows
@@ -89,7 +93,10 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Serve uploaded files
+const staticDir = process.env.VERCEL || process.env.NODE_ENV === 'production' ? '/tmp' : path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(staticDir));
 
 // Compatibility shim: if client forgets the /api prefix, rewrite to /api/*
 app.use((req, _res, next) => {

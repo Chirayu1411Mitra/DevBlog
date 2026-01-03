@@ -8,7 +8,9 @@ const path = require('path');
 // --- Multer setup for file uploads ---
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'uploads/');
+        // Vercel only allows writing to /tmp
+        const dir = process.env.VERCEL || process.env.NODE_ENV === 'production' ? '/tmp' : 'uploads/';
+        cb(null, dir);
     },
     filename: function (req, file, cb) {
         cb(null, Date.now() + path.extname(file.originalname)); // Appending extension
