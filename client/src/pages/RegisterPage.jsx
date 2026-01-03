@@ -1,60 +1,131 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 
-export default function RegisterPage(){
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
+
+const RegisterPage = () => {
+  const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const navigate = useNavigate();
-  const toast = useToast();
+  const { addToast } = useToast();
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (loading) return;
-    setLoading(true);
+    if (password !== confirmPassword) {
+      addToast('Passwords do not match.', { type: 'error' });
+      return;
+    }
     try {
-      const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
-      await axios.post(`${api}/auth/register`, { username, email, password });
-      toast.success('Registered successfully. Please login.');
-      navigate('/login');
-    } catch (err) {
-      const msg = err?.response?.data?.message || err.message || 'Registration failed';
-      toast.error(msg);
-    } finally {
-      setLoading(false);
+      const response = await axios.post(`${API_URL}/auth/register`, { username, email, password });
+      sessionStorage.setItem('token', response.data.token);
+      addToast('Account created successfully!', { type: 'success' });
+      navigate('/');
+    } catch (error) {
+      console.error('Registration failed:', error);
+      addToast(error.response?.data?.message || 'Registration failed.', { type: 'error' });
     }
   };
 
+  const handleGitHubLogin = () => {
+    window.location.href = `${API_URL}/auth/github`;
+  };
+
   return (
-    <div className="auth-page">
+    <div className="auth-container">
       <div className="auth-card">
-        <h2>Join BlogSpace</h2>
-        <p style={{ textAlign: 'center', color: 'var(--muted)' }}>Create your account and start sharing your stories</p>
-        <button className="oauth-btn" onClick={() => {
-          const base = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/api\/?$/, '');
-          window.location.href = `${base}/api/auth/github`;
-        }}>Sign up with GitHub</button>
-        <div className="auth-divider">OR CONTINUE WITH EMAIL</div>
-        <form onSubmit={handleRegister} className="auth-form">
-          <label>Full Name</label>
-          <input value={username} onChange={(e) => setUsername(e.target.value)} required />
-          <label>Email Address</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <label>Password</label>
-          <div className="password-field">
-            <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required />
-            <button type="button" className="eye" onClick={() => setShowPassword(s => !s)} aria-label="toggle password">{showPassword ? '🙈' : '👁️'}</button>
+        <div className="auth-header">
+          <div className="logo">
+            <i className="fas fa-file-alt"></i>
+            <span>Dev Blog</span>
           </div>
-          <button className="btn" type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create Account'}</button>
+          <h2>Create Account</h2>
+          <p>Join our community of developers</p>
+        </div>
+
+        <button className="btn btn-github" onClick={handleGitHubLogin}>
+          <i className="fab fa-github"></i>
+          Sign up with GitHub
+        </button>
+
+        <div className="divider">
+          <span>or continue with email</span>
+        </div>
+
+        <form onSubmit={handleRegister}>
+          <div className="form-group">
+            <label htmlFor="fullName">Full Name</label>
+            <input
+              type="text"
+              id="fullName"
+              className="form-control"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="John Doe"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="username">Username</label>
+            <input
+              type="text"
+              id="username"
+              className="form-control"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="johndoe"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              className="form-control"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              className="form-control"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="confirmPassword">Confirm Password</label>
+            <input
+              type="password"
+              id="confirmPassword"
+              className="form-control"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </div>
+          <button type="submit" className="btn btn-dark">Create Account</button>
         </form>
-        <div style={{ marginTop: 12, textAlign: 'center' }}>
-          Already have an account? <a href="/login">Sign in here</a>
+
+        <div className="auth-footer">
+          <p>Already have an account? <Link to="/login">Sign in</Link></p>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default RegisterPage;

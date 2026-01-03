@@ -1,75 +1,85 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:6969/api';
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
 
 const LoginPage = () => {
-  const navigate = useNavigate();
-  // form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const toast = useToast();
-
-  const handleGitHubLogin = () => {
-    const serverBase = (API_BASE_URL || '').replace(/\/api\/?$/, '');
-    // Build absolute backend URL for OAuth regardless of how VITE_API_URL is formatted
-    const target = `${serverBase}/api/auth/github`;
-    window.location.href = target;
-  };
-
-  const saveTokenAndRedirect = (token) => {
-    localStorage.setItem('token', token);
-    navigate('/');
-  };
+  const navigate = useNavigate();
+  const { addToast } = useToast();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (loading) return;
-    setLoading(true);
-    setError(null);
     try {
-      const api = (API_BASE_URL || 'http://localhost:6969/api').replace(/\/$/, '');
-      const res = await axios.post(`${api}/auth/login`, { email, password });
-      saveTokenAndRedirect(res.data.token);
-    } catch (err) {
-      console.error('Login failed', err.response?.data || err.message);
-      const msg = err?.response?.data?.message || 'Login failed';
-      setError(msg);
-    } finally {
-      setLoading(false);
+      const response = await axios.post(`${API_URL}/auth/login`, { email, password });
+      sessionStorage.setItem('token', response.data.token);
+      addToast('Login successful!', { type: 'success' });
+      navigate('/');
+    } catch (error) {
+      console.error('Login failed:', error);
+      addToast(error.response?.data?.message || 'Login failed.', { type: 'error' });
     }
   };
 
+  const handleGitHubLogin = () => {
+    window.location.href = `${API_URL}/auth/github`;
+  };
+
   return (
-    <div className="auth-page">
+    <div className="auth-container">
       <div className="auth-card">
-        <h2>Sign In</h2>
-        <p style={{ textAlign: 'center', color: 'var(--muted)' }}>Enter your credentials to access your account</p>
-        <button className="oauth-btn" onClick={handleGitHubLogin}>Sign in with GitHub</button>
-        <div className="auth-divider">OR CONTINUE WITH EMAIL</div>
-        <form onSubmit={handleLogin} className="auth-form">
-          <label>Email</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <label>Password</label>
-          <div className="password-field">
-            <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required />
-            <button type="button" className="eye" onClick={() => setShowPassword(s => !s)} aria-label="toggle password">{showPassword ? '🙈' : '👁️'}</button>
+        <div className="auth-header">
+          <div className="logo">
+            <i className="fas fa-file-alt"></i>
+            <span>Dev Blog</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Remember me</label>
-            <a href="/forgot-password">Forgot password?</a>
+          <h2>Welcome Back</h2>
+          <p>Sign in to your account to continue</p>
+        </div>
+
+        <button className="btn btn-github" onClick={handleGitHubLogin}>
+          <i className="fab fa-github"></i>
+          Sign in with GitHub
+        </button>
+
+        <div className="divider">
+          <span>or continue with email</span>
+        </div>
+
+        <form onSubmit={handleLogin}>
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              className="form-control"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+            />
           </div>
-          {error && <p style={{ color: 'red' }}>{error}</p>}
-          <button className="btn" type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}</button>
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              className="form-control"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+            <Link to="/forgot-password" className="forgot-password">Forgot password?</Link>
+          </div>
+          <button type="submit" className="btn btn-dark">Sign In</button>
         </form>
-        <div style={{ marginTop: 12, textAlign: 'center' }}>
-          Don't have an account? <a href="/register">Create one here</a>
+
+        <div className="auth-footer">
+          <p>Don't have an account? <Link to="/register">Sign up</Link></p>
         </div>
       </div>
     </div>

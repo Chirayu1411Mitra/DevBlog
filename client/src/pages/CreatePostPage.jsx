@@ -1,37 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
-import TagInput from '../components/TagInput';
 
-// Backend API URL (set VITE_API_URL in production). Fallback to localhost for dev.
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
 
 const CreatePostPage = () => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState([]);
+  const [currentTag, setCurrentTag] = useState('');
+  const [coverImageUrl, setCoverImageUrl] = useState('');
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   const { addToast } = useToast();
 
-  const handleSubmit = async (e, publish = true) => {
-    e && e.preventDefault();
+  const handleAddTag = () => {
+    if (currentTag && !tags.includes(currentTag)) {
+      setTags([...tags, currentTag.toLowerCase().trim()]);
+      setCurrentTag('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const res = await axios.post(`${API_URL}/posts/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setCoverImageUrl(res.data.imageUrl);
+      addToast('Image uploaded successfully!', { type: 'success' });
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      addToast('Image upload failed.', { type: 'error' });
+    }
+  };
+
+  const handleSubmit = async (isDraft) => {
     if (!token) {
-      addToast('You must be logged in to create a post.', { type: 'error' });
+      addToast('You must be logged in.', { type: 'error' });
       navigate('/login');
       return;
     }
-
     try {
-  const res = await axios.post(`${API_URL}/posts`, { title, content, draft: publish ? false : true, tags }, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
-      if (publish) {
+      const res = await axios.post(`${API_URL}/posts`, { title, content, draft: isDraft, tags, cover_image_url: coverImageUrl }, { 
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (isDraft) {
+        addToast('Draft saved.', { type: 'info' });
+        navigate('/my-drafts');
+      } else {
         addToast('Post published!', { type: 'success' });
         navigate(`/post/${res.data.id}`);
-      } else {
-        addToast('Draft saved.', { type: 'info' });
-        // after saving a draft send user to their drafts page
-        navigate('/my-drafts');
       }
     } catch (error) {
       console.error('Failed to create post:', error);
@@ -40,40 +73,89 @@ const CreatePostPage = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="fade-in">
-      <h2>Create New Post</h2>
-      <div>
-        <label htmlFor="title">Title</label>
-        <input
-          type="text"
-          id="title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-          style={{ width: '100%', padding: '8px', marginBottom: '1rem' }}
-        />
+    <div className="editor-page-container">
+      <div className="editor-card">
+        <div className="editor-header">
+          <h2>Create New Post</h2>
+          <div className="editor-actions">
+            <button className="btn btn-secondary" onClick={() => handleSubmit(true)}>Save Draft</button>
+            <button className="btn btn-dark" onClick={() => handleSubmit(false)}>Publish</button>
+          </div>
+        </div>
+
+        <div className="editor-form">
+          <div className="editor-form-group">
+            <label htmlFor="cover-image">Cover Image (optional)</label>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              style={{ display: 'none' }}
+              accept="image/*"
+            />
+            <button type="button" className="btn-upload" onClick={() => fileInputRef.current.click()}>
+              <i className="fas fa-upload"></i> Upload Image
+            </button>
+            <span className="upload-hint">Max size: 5MB (JPG, PNG, GIF, WebP)</span>
+            {coverImageUrl && (
+              <div className="image-preview">
+                <img src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:6969'}${coverImageUrl}`} alt="Cover preview" />
+              </div>
+            )}
+          </div>
+
+          <div className="editor-form-group">
+            <label htmlFor="title">Title</label>
+            <input
+              type="text"
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter your post title..."
+              className="editor-input"
+              required
+            />
+          </div>
+
+          <div className="editor-form-group">
+            <label htmlFor="tags">Tags</label>
+            <div className="tag-input-container">
+              <input
+                type="text"
+                id="tags"
+                value={currentTag}
+                onChange={(e) => setCurrentTag(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                placeholder="Add a tag..."
+                className="editor-input"
+              />
+              <button type="button" className="btn btn-dark" onClick={handleAddTag}>Add</button>
+            </div>
+            <div className="tag-list-editor">
+              {tags.map(tag => (
+                <span key={tag} className="tag-pill-editor">
+                  {tag}
+                  <button onClick={() => handleRemoveTag(tag)}>&times;</button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="editor-form-group">
+            <label htmlFor="content">Content</label>
+            <textarea
+              id="content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Write your post content here... (Markdown supported)"
+              className="editor-textarea"
+              rows={15}
+              required
+            />
+          </div>
+        </div>
       </div>
-      <div>
-        <label htmlFor="content">Content (Markdown supported)</label>
-        <textarea
-          id="content"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          required
-          rows={15}
-          style={{ width: '100%', padding: '8px' }}
-        />
-      </div>
-      <div style={{ marginTop: '1rem' }}>
-        <label>Tags</label>
-        <TagInput value={tags} onChange={setTags} />
-      </div>
-      <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-        <button className="btn" type="button" onClick={(e) => handleSubmit(e, false)}>Save draft</button>
-        <button className="btn" type="submit" onClick={(e) => handleSubmit(e, true)}>Publish</button>
-        <a href="/user" style={{ alignSelf: 'center', marginLeft: 'auto' }}>My drafts</a>
-      </div>
-    </form>
+    </div>
   );
 };
 

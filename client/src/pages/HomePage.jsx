@@ -1,105 +1,179 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
+import PostCard from '../components/PostCard';
+import LoginModal from '../components/LoginModal';
+import Loader from '../components/Loader';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
 
 const HomePage = () => {
   const [posts, setPosts] = useState([]);
+  const [popularTags, setPopularTags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const navigate = useNavigate();
+  const token = sessionStorage.getItem('token');
 
-  const token = localStorage.getItem('token');
-
+  // Debounced search effect
   useEffect(() => {
-    const fetchPosts = async () => {
+    const delayDebounceFn = setTimeout(async () => {
+      setLoading(true);
       try {
-        const response = await axios.get(`${API_URL}/posts`);
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        let url = `${API_URL}/posts/top`; // Default to top 5 posts
+
+        if (searchTerm.trim()) {
+          url = `${API_URL}/posts/search?q=${encodeURIComponent(searchTerm.trim())}`;
+        }
+
+        const response = await axios.get(url, { headers });
         setPosts(response.data);
+        setError(null);
       } catch (err) {
+        console.error('Search error:', err);
         setError('Failed to fetch posts.');
-        console.error(err);
       } finally {
         setLoading(false);
       }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, token]);
+
+  // Initial data fetch (tags only)
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/posts/tags/popular`);
+        setPopularTags(response.data);
+      } catch (err) {
+        console.error('Failed to fetch tags:', err);
+      }
     };
-    fetchPosts();
+    fetchTags();
   }, []);
 
   const heroLoggedOut = (
-    <section className="hero hero-logged-out">
-      <div className="hero-inner">
-        <h1 className="hero-title">Share Your Story with the World</h1>
-        <p className="hero-sub">Join thousands of writers and readers in our vibrant community. Discover amazing stories, share your thoughts, and connect with like-minded people.</p>
-        <div className="hero-ctas">
-          <button className="cta-btn cta-primary" onClick={() => navigate('/register')}>Start Writing Today</button>
-          <button className="cta-btn" onClick={() => navigate('/login')}>Sign In</button>
+    <section className="hero-section">
+      <div className="hero-content">
+        <h2>Welcome to Dev Blog</h2>
+        <p>Discover insightful articles, tutorials, and stories from developers around the world. Join our community to start sharing your knowledge!</p>
+        <div className="hero-buttons">
+          <button className="btn btn-primary" onClick={() => navigate('/register')}>Get Started Free</button>
+          <button className="btn btn-secondary" onClick={() => navigate('/login')}>Sign In</button>
         </div>
       </div>
     </section>
   );
 
-  const heroLoggedIn = (
-    <section className="hero hero-logged-in">
-      <div className="hero-inner">
-        <h1 className="hero-title">Discover Amazing Stories</h1>
-        <p className="hero-sub">Join our community of writers and readers. Share your thoughts, learn from others, and explore topics that matter to you.</p>
-        <div className="hero-ctas">
-          <button className="cta-btn cta-primary" onClick={() => navigate('/create')}>Start Writing</button>
-        </div>
-      </div>
-    </section>
+  const headerLoggedIn = (
+    <div className="explore-header">
+      <h2>Discover Stories and Ideas</h2>
+    </div>
   );
 
-  if (loading)
-    return (
-      <div>
-        <div className="skeleton" style={{ height: 24, width: '40%', margin: '1rem auto 0' }} />
-        <div className="skeleton" style={{ height: 120, marginTop: 12 }} />
-      </div>
-    );
-  if (error) return <p style={{ color: 'red' }}>{error}</p>;
+  if (loading && posts.length === 0) {
+    return <Loader />;
+  }
 
   return (
-    <div>
-      {/* hero */}
-      {token ? heroLoggedIn : heroLoggedOut}
+    <div className="home-page">
+      {token ? null : heroLoggedOut}
+      <main className="home-layout">
+        <div className="posts-column">
+          {token ? headerLoggedIn : <h3 className="explore-header">Explore Articles</h3>}
+          <div className="search-bar">
+            <i className="fas fa-search"></i>
+            <input
+              type="text"
+              placeholder="Search articles..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="feed-toggle">
+            <button className="btn-tab active">{searchTerm ? 'Search Results' : 'Top 5 Liked'}</button>
+          </div>
 
-      <section className="featured">
-        <div className="featured-header">
-          <h2>Featured Articles</h2>
-          <Link to="/">View All</Link>
+          {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
+
+          <div className="post-list">
+            {posts.length > 0 ? (
+              posts.map(post => <PostCard key={post.id} post={post} token={token} />)
+            ) : (
+              !loading && <p style={{ textAlign: 'center', padding: '2rem' }}>No posts found.</p>
+            )}
+          </div>
         </div>
-        {posts.length > 0 ? (
-          posts.map((post) => (
-            <div key={post.id} className="post-card fade-in">
-              <h2>
-                <Link to={`/post/${post.id}`}>{post.title}</Link>
-              </h2>
-              <p>
-                by {post.username} -{' '}
-                <small>{formatDistanceToNow(new Date(post.created_at))} ago</small>
-              </p>
-              {(() => {
-                const tags = Array.isArray(post.tags) ? post.tags : (post.tags ? [post.tags] : []);
-                return tags.length > 0 ? (
-                  <div style={{ marginTop: 8 }}>
-                    {tags.map((t, i) => (
-                      <Link key={i} to={`/tag/${encodeURIComponent(t)}`} style={{ textDecoration: 'none' }}>
-                        <span className="tag-pill">{t}</span>
-                      </Link>
-                    ))}
-                  </div>
-                ) : null;
-              })()}
-            </div>
-          ))
-        ) : (
-          <p>No posts yet. Be the first to create one!</p>
-        )}
-      </section>
+        <aside className="sidebar-column">
+          {!token && <JoinCard />}
+          <PopularTags tags={popularTags} />
+          <StartWritingCard />
+        </aside>
+      </main>
+      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
+    </div>
+  );
+};
+
+const JoinCard = () => {
+  const navigate = useNavigate();
+  return (
+    <div className="sidebar-card">
+      <div className="card-icon"><i className="fas fa-user-plus"></i></div>
+      <h4>Join Dev Blog</h4>
+      <p>Create an account to like, bookmark, comment, and write your own posts!</p>
+      <button className="btn btn-dark" onClick={() => navigate('/register')}>Create Account</button>
+      <button className="btn btn-link" onClick={() => navigate('/login')}>Sign In</button>
+    </div>
+  );
+};
+
+const PopularTags = ({ tags }) => {
+  const token = sessionStorage.getItem('token');
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  const handleTagClick = (tag, e) => {
+    if (!token) {
+      e.preventDefault();
+      setShowLoginModal(true);
+    }
+  };
+
+  return (
+    <>
+      <div className="sidebar-card">
+        <h4>Popular Tags</h4>
+        <ul className="tag-list">
+          {tags.map(tag => (
+            <li key={tag.tag}>
+              <Link
+                to={`/tag/${tag.tag}`}
+                onClick={(e) => handleTagClick(tag.tag, e)}
+              >
+                #{tag.tag}
+              </Link>
+              <span>{tag.count}</span>
+            </li>
+          ))}
+        </ul>
+        {!token && <button className="btn btn-link">Sign in to filter posts by tags</button>}
+      </div>
+      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
+    </>
+  );
+};
+
+const StartWritingCard = () => {
+  const navigate = useNavigate();
+  return (
+    <div className="sidebar-card cta-card">
+      <h4>Start Writing</h4>
+      <p>Share your knowledge with the developer community.</p>
+      <button className="btn btn-light" onClick={() => navigate('/create')}>Get Started</button>
     </div>
   );
 };

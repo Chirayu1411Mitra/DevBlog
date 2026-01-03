@@ -25,7 +25,7 @@ export default function ResetPasswordPage() {
       }
     };
     check();
-  }, [token]);
+  }, [token, toast]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

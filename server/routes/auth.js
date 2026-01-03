@@ -130,15 +130,20 @@ router.put('/me', protect, async (req, res) => {
                 const match = await bcrypt.compare(currentPassword, userRec.password_hash);
                 if (!match) return res.status(401).json({ message: 'Current password is incorrect' });
             }
-            // if no existing password_hash (e.g., OAuth only), allow setting password without currentPassword
         }
 
         // Build update dynamically
         const fields = [];
         const params = [];
         let idx = 1;
+        const { bio, avatar_url, banner_url } = req.body;
+
         if (username) { fields.push(`username = $${idx++}`); params.push(username); }
         if (email) { fields.push(`email = $${idx++}`); params.push(email); }
+        if (bio !== undefined) { fields.push(`bio = $${idx++}`); params.push(bio); }
+        if (avatar_url !== undefined) { fields.push(`avatar_url = $${idx++}`); params.push(avatar_url); }
+        if (banner_url !== undefined) { fields.push(`banner_url = $${idx++}`); params.push(banner_url); }
+
         if (password) {
             const salt = await bcrypt.genSalt(10);
             const hash = await bcrypt.hash(password, salt);
@@ -146,8 +151,10 @@ router.put('/me', protect, async (req, res) => {
             params.push(hash);
         }
 
+        if (fields.length === 0) return res.status(400).json({ message: 'No fields to update' });
+
         params.push(userId);
-        const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, username, email, avatar_url, github_id, created_at`;
+        const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, username, email, avatar_url, banner_url, bio, github_id, created_at`;
         const updated = await db.query(sql, params);
         res.json({ user: updated.rows[0] });
     } catch (err) {
@@ -165,6 +172,26 @@ router.get('/my-posts', protect, async (req, res) => {
         res.json(result.rows);
     } catch (err) {
         console.error('Get my posts error:', err.message || err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Get posts saved by the current user
+router.get('/me/saved-posts', protect, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const result = await db.query(
+            `SELECT p.*, u.username, u.avatar_url 
+             FROM posts p 
+             JOIN saved_posts sp ON p.id = sp.post_id 
+             JOIN users u ON p.user_id = u.id
+             WHERE sp.user_id = $1 
+             ORDER BY sp.created_at DESC`,
+            [userId]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Get saved posts error:', err.message || err);
         res.status(500).json({ message: 'Server error' });
     }
 });

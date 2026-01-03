@@ -1,193 +1,283 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
+import PostCard from '../components/PostCard';
+import Loader from '../components/Loader';
+import UserListModal from '../components/UserListModal';
+import EditProfileModal from '../components/EditProfileModal';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
 
 const UserPage = () => {
-  const [user, setUser] = useState(null);
-  const [posts, setPosts] = useState([]);
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ username: '', email: '' });
-  const [passwordFlow, setPasswordFlow] = useState({ step: 0, current: '', newPassword: '', confirm: '', verified: false });
+  const { username } = useParams();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+
+  // Modal states
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [modalUsers, setModalUsers] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const token = sessionStorage.getItem('token');
 
-  const token = localStorage.getItem('token');
+  // Get current user info for "Edit Profile" check
+  const [currentUsername, setCurrentUsername] = useState(null);
+
   useEffect(() => {
-    if (!token) return navigate('/login');
-
-    const fetch = async () => {
-      try {
-        const me = await axios.get(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
-        setUser(me.data.user);
-  setForm({ username: me.data.user.username || '', email: me.data.user.email || '' });
-
-        const myPosts = await axios.get(`${API_URL}/auth/my-posts`, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
-        setPosts(myPosts.data);
-      } catch (err) {
-        console.error('Failed to load user page', err);
-        addToast('Failed to load user data', { type: 'error' });
+    // Decode token or fetch 'me' to get current username to compare
+    const fetchMe = async () => {
+      if (token) {
+        try {
+          const res = await axios.get(`${API_URL}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setCurrentUsername(res.data.user.username);
+        } catch (e) { console.error(e); }
       }
     };
-    fetch();
+    fetchMe();
   }, [token]);
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const response = await axios.get(`${API_URL}/users/${username}`, { headers });
+        setProfile(response.data);
+        setIsFollowing(response.data.user.is_following);
+        setFollowersCount(parseInt(response.data.user.followers_count, 10));
+      } catch (err) {
+        setError('Failed to load profile.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [username, token]);
+
+  const handleFollow = async () => {
+    if (!token) {
+      addToast('Please log in to follow users.', { type: 'info' });
+      navigate('/login');
+      return;
+    }
     try {
-  // If passwordFlow.step === 2 we include newPassword in the update payload
-  const payload = { ...form };
-  if (passwordFlow.step === 2 && passwordFlow.newPassword) payload.password = passwordFlow.newPassword;
-  const res = await axios.put(`${API_URL}/auth/me`, payload, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
-      setUser(res.data.user);
-      setEditing(false);
-      addToast('Profile updated', { type: 'success' });
-    } catch (err) {
-      console.error('Update failed', err);
-      addToast(err.response?.data?.message || 'Update failed', { type: 'error' });
+      const response = await axios.post(`${API_URL}/users/${profile.user.id}/follow`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setIsFollowing(response.data.following);
+      setFollowersCount(prev => response.data.following ? prev + 1 : prev - 1);
+      addToast(response.data.message, { type: 'success' });
+    } catch (error) {
+      addToast(error.response?.data?.message || 'Action failed', { type: 'error' });
     }
   };
 
-  const saveProfile = async () => {
-    try {
-      const payload = { ...form };
-      if (passwordFlow.step === 2 && passwordFlow.newPassword) {
-        // include currentPassword for server-side verification
-        payload.password = passwordFlow.newPassword;
-        payload.currentPassword = passwordFlow.current;
+  const handleEditProfile = () => {
+    setShowEditProfileModal(true);
+  };
+
+  const handleProfileUpdate = (updatedUser) => {
+    // Update local profile state
+    setProfile(prev => ({
+      ...prev,
+      user: {
+        ...prev.user,
+        ...updatedUser
       }
-      const res = await axios.put(`${API_URL}/auth/me`, payload, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
-      setUser(res.data.user);
-      setEditing(false);
-      const changedPassword = (passwordFlow.step === 2 && passwordFlow.newPassword);
-      setPasswordFlow({ step: 0, current: '', newPassword: '', confirm: '', verified: false });
-      if (changedPassword) {
-        // force re-login after password change
-        localStorage.removeItem('token');
-        addToast('Password changed — please log in again', { type: 'success' });
-        navigate('/login');
-        return;
-      }
-      addToast('Profile updated', { type: 'success' });
-    } catch (err) {
-      console.error('Update failed', err);
-      addToast(err.response?.data?.message || 'Update failed', { type: 'error' });
+    }));
+    // If username changed, we might need to navigate or just update state 
+    if (updatedUser.username !== username) {
+      navigate(`/user/${updatedUser.username}`, { replace: true });
     }
   };
 
-  if (!user) return <div>Loading...</div>;
+  const openUserList = async (type) => {
+    const userId = profile.user.id;
+    setModalLoading(true);
+    setModalUsers([]);
+    if (type === 'followers') {
+      setModalTitle('Followers');
+      setShowFollowersModal(true);
+    } else {
+      setModalTitle('Following');
+      setShowFollowingModal(true);
+    }
+
+    try {
+      const endpoint = type === 'followers' ? 'followers' : 'following';
+      const res = await axios.get(`${API_URL}/users/${userId}/${endpoint}`);
+      setModalUsers(res.data);
+    } catch (err) {
+      console.error(err);
+      addToast('Failed to fetch user list', { type: 'error' });
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleUnfollowUser = async (targetUserId) => {
+    try {
+      await axios.post(`${API_URL}/users/${targetUserId}/follow`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setModalUsers(prev => prev.filter(u => u.id !== targetUserId));
+      // If viewing own profile, "Following" count decreases
+      if (isOwnProfile) {
+        setFollowersCount(prev => prev); // Trigger re-render if needed, but mainly list update
+      }
+      addToast('Unfollowed user', { type: 'success' });
+    } catch (err) {
+      console.error(err);
+      addToast('Failed to unfollow', { type: 'error' });
+    }
+  };
+
+  const handleRemoveFollower = async (followerId) => {
+    try {
+      await axios.delete(`${API_URL}/users/followers/${followerId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setModalUsers(prev => prev.filter(u => u.id !== followerId));
+      setFollowersCount(prev => prev - 1);
+      addToast('Follower removed', { type: 'success' });
+    } catch (err) {
+      console.error(err);
+      addToast('Failed to remove follower', { type: 'error' });
+    }
+  };
+
+  if (loading) return <Loader />;
+  if (error) return <p style={{ color: 'red' }}>{error}</p>;
+  if (!profile) return <p>User not found.</p>;
+
+  const { user, posts } = profile;
+  const isOwnProfile = currentUsername === user.username;
+  if (!user) return <Loader />;
+
+  const API_BASE_URL = API_URL.replace('/api', '');
+  const getImageUrl = (url) => {
+    if (!url) return null;
+    return url.startsWith('/uploads') ? `${API_BASE_URL}${url}` : url;
+  };
+
+  const renderProfileActions = () => {
+    if (isOwnProfile) {
+      return (
+        <button className="btn btn-light" onClick={handleEditProfile} style={{ border: '1px solid var(--border-color)' }}>
+          Edit Profile
+        </button>
+      );
+    } else {
+      return (
+        <button className="btn btn-dark" onClick={handleFollow}>
+          {isFollowing ? 'Unfollow' : 'Follow'}
+        </button>
+      );
+    }
+  };
 
   return (
-    <div className="fade-in profile">
-      <div className="profile-header">
-        <div className="profile-avatar">{(user.username || '?').slice(0,1).toUpperCase()}</div>
-        <div>
-          <h2 className="profile-username">{user.username}</h2>
-          <div className="profile-meta">Joined {new Date(user.created_at).toLocaleDateString()} • {user.email || 'No email'}</div>
+    <div className="user-page">
+      <div
+        className="profile-header"
+        style={{
+          backgroundImage: getImageUrl(user.banner_url)
+            ? `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url(${getImageUrl(user.banner_url)})`
+            : 'linear-gradient(135deg, var(--primary-color), var(--secondary-color))'
+        }}
+      >
+        <div className="profile-info-container">
+          <div className="profile-avatar-wrapper">
+            <img
+              src={getImageUrl(user.avatar_url) || `https://ui-avatars.com/api/?name=${user.username}&background=random`}
+              alt={user.username}
+              className="profile-avatar"
+            />
+          </div>
+          <div className="profile-details">
+            <h1 className="profile-username">{user.username}</h1>
+            {user.bio && <p className="profile-bio">{user.bio}</p>}
+            <div className="profile-stats">
+              <span onClick={() => openUserList('followers')} className="clickable">
+                <strong>{followersCount || 0}</strong> Followers
+              </span>
+              <span onClick={() => openUserList('following')} className="clickable">
+                <strong>{user.following_count || 0}</strong> Following
+              </span>
+              <span><strong>{posts.length}</strong> Posts</span>
+            </div>
+            <div className="profile-actions">
+              {renderProfileActions()}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="profile-grid">
-        <aside className="profile-card">
-          <h4>Profile</h4>
-          {editing ? (
-            <form onSubmit={handleUpdate} className="profile-form">
-              <div className="row">
-                <div>
-                  <label>Username</label>
-                  <input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
-                </div>
-                <div>
-                  <label>Email</label>
-                  <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-                </div>
-              </div>
-              <div style={{ marginTop: 8 }}>
-                <label>Security</label>
-                {passwordFlow.step === 0 && (
-                  <div className="profile-actions">
-                    <button type="button" className="btn" onClick={() => setPasswordFlow({ step: 1, current: '', newPassword: '', confirm: '', verified: false })}>Change password</button>
-                  </div>
-                )}
-                {passwordFlow.step === 1 && (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-                    <input type="password" placeholder="Current password" value={passwordFlow.current} onChange={(e) => setPasswordFlow({ ...passwordFlow, current: e.target.value })} />
-                    <button className="btn" type="button" onClick={async () => {
-                      try {
-                        await axios.post(`${API_URL}/auth/verify-password`, { currentPassword: passwordFlow.current }, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
-                        setPasswordFlow({ step: 2, current: passwordFlow.current, newPassword: '', confirm: '', verified: true });
-                        addToast('Current password verified. Enter new password.', { type: 'success' });
-                      } catch (err) {
-                        console.error('Verify failed', err);
-                        addToast(err.response?.data?.message || 'Verification failed', { type: 'error' });
-                      }
-                    }}>Verify</button>
-                    <button type="button" onClick={() => setPasswordFlow({ step: 0, current: '', newPassword: '', confirm: '', verified: false })}>Cancel</button>
-                  </div>
-                )}
-                {passwordFlow.step === 2 && (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-                    <input type="password" placeholder="New password" value={passwordFlow.newPassword} onChange={(e) => setPasswordFlow({ ...passwordFlow, newPassword: e.target.value })} />
-                    <input type="password" placeholder="Confirm new password" value={passwordFlow.confirm} onChange={(e) => setPasswordFlow({ ...passwordFlow, confirm: e.target.value })} />
-                    <button className="btn" type="button" onClick={() => {
-                      if (passwordFlow.newPassword !== passwordFlow.confirm) {
-                        addToast('New password and confirmation do not match', { type: 'error' });
-                        return;
-                      }
-                      saveProfile();
-                    }}>Save New Password</button>
-                    <button type="button" onClick={() => setPasswordFlow({ step: 0, current: '', newPassword: '', confirm: '', verified: false })}>Cancel</button>
-                  </div>
-                )}
-              </div>
-              {passwordFlow.step !== 2 && (
-                <div className="form-actions">
-                  <button className="btn" type="submit">Save</button>
-                  <button type="button" onClick={() => setEditing(false)}>Cancel</button>
-                </div>
-              )}
-            </form>
-          ) : (
-            <div>
-              <div className="profile-meta">Email: {user.email || '—'}</div>
-              <div className="profile-actions">
-                <button className="btn" onClick={() => setEditing(true)}>Edit Profile</button>
-              </div>
-            </div>
-          )}
-        </aside>
-
-        <main className="profile-card">
-          <h4>Your Posts</h4>
-          {posts.length ? (
-            <div className="posts-list">
-              {posts.map((p) => (
-                <div key={p.id} className="post-item">
-                  <h4>{p.title}</h4>
-                  <div className="meta">{new Date(p.created_at).toLocaleString()}</div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                    <button className="btn" onClick={() => navigate(`/post/${p.id}/edit`)}>Edit</button>
-                    <button className="btn" onClick={async () => {
-                      try {
-                        await axios.delete(`${API_URL}/posts/${p.id}`, { headers: { Authorization: `Bearer ${token}` } });
-                        setPosts((list) => list.filter(x => x.id !== p.id));
-                        addToast('Post deleted', { type: 'success' });
-                      } catch (err) {
-                        console.error('Delete failed', err);
-                        addToast(err.response?.data?.message || 'Delete failed', { type: 'error' });
-                      }
-                    }}>Delete</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="profile-meta">No posts yet.</p>
-          )}
-        </main>
+      <div className="profile-content">
+        <h2 className="section-title">
+          {isOwnProfile ? 'My Posts' : `${user.username}'s Posts`}
+        </h2>
+        {posts.length === 0 ? (
+          <div className="no-posts">
+            <p>No posts yet.</p>
+            {isOwnProfile && (
+              <Link to="/write" className="btn btn-primary">Create First Post</Link>
+            )}
+          </div>
+        ) : (
+          <div className="posts-grid">
+            {posts.map(post => (
+              <PostCard key={post.id} post={{ ...post, username: user.username, avatar_url: user.avatar_url }} token={token} />
+            ))}
+          </div>
+        )}
       </div>
+
+      {isOwnProfile && (
+        <>
+          <EditProfileModal
+            isOpen={showEditProfileModal}
+            onClose={() => setShowEditProfileModal(false)}
+            user={user}
+            onUpdate={handleProfileUpdate}
+          />
+        </>
+      )}
+      <UserListModal
+        isOpen={showFollowersModal}
+        onClose={() => setShowFollowersModal(false)}
+        title={modalTitle}
+        users={modalUsers}
+        loading={modalLoading}
+        actionType={isOwnProfile ? 'remove' : null}
+        onAction={handleRemoveFollower}
+      />
+      <UserListModal
+        isOpen={showFollowingModal}
+        onClose={() => setShowFollowingModal(false)}
+        title={modalTitle}
+        users={modalUsers}
+        loading={modalLoading}
+        actionType={isOwnProfile ? 'unfollow' : null}
+        onAction={handleUnfollowUser}
+      />
+      <EditProfileModal
+        isOpen={showEditProfileModal}
+        onClose={() => setShowEditProfileModal(false)}
+        user={isOwnProfile ? user : null} // Pass current user data
+        onUpdate={handleProfileUpdate}
+      />
     </div>
   );
 };

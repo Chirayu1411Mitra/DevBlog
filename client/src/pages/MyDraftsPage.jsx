@@ -2,68 +2,99 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
+import { format } from 'date-fns';
+import Loader from '../components/Loader';
 
-export default function MyDraftsPage(){
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
+
+export default function MyDraftsPage() {
   const [drafts, setDrafts] = useState([]);
-  const token = localStorage.getItem('token');
+  const [loading, setLoading] = useState(true);
+  const token = sessionStorage.getItem('token');
   const navigate = useNavigate();
-  const toast = useToast();
+  const { addToast } = useToast();
 
   useEffect(() => {
-    const fetch = async () => {
-      if (!token) { navigate('/login'); return; }
+    const fetchDrafts = async () => {
+      if (!token) {
+        navigate('/login');
+        return;
+      }
       try {
-        const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
-        const res = await axios.get(`${api}/posts/my-drafts`, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
+        const res = await axios.get(`${API_URL}/posts/my-drafts`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setDrafts(res.data);
       } catch (err) {
         console.error(err);
-        toast.error('Failed to load drafts');
+        addToast('Failed to load drafts', { type: 'error' });
+      } finally {
+        setLoading(false);
       }
     };
-    fetch();
-  }, []);
+    fetchDrafts();
+  }, [token, navigate, addToast]);
 
-  const publish = async (id) => {
-    try {
-      const api = (import.meta.env.VITE_API_URL || 'http://localhost:6969/api').replace(/\/$/, '');
-      const token = localStorage.getItem('token');
-      await axios.post(`${api}/posts/${id}/publish`, {}, { headers: { Authorization: `Bearer ${token}` }, withCredentials: true });
-      toast.success('Published');
-      setDrafts((d) => d.filter(x => x.id !== id));
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to publish');
+  const deleteDraft = async (id) => {
+    if (window.confirm('Are you sure you want to delete this draft?')) {
+      try {
+        await axios.delete(`${API_URL}/posts/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setDrafts((d) => d.filter((x) => x.id !== id));
+        addToast('Draft deleted', { type: 'success' });
+      } catch (err) {
+        console.error(err);
+        addToast('Failed to delete draft', { type: 'error' });
+      }
     }
   };
 
+  if (loading) return <Loader />;
+
   return (
-    <div className="page-container">
-      <h2>My Drafts</h2>
-      {drafts.length === 0 ? <p>No drafts</p> : (
-        drafts.map(d => (
-          <div key={d.id} className="post-card">
-            <h3>{d.title}</h3>
-            <p>{d.content.slice(0,200)}...</p>
-            {(() => {
-              const tags = Array.isArray(d.tags) ? d.tags : (d.tags ? [d.tags] : []);
-              return tags.length > 0 ? (
-                <div style={{ margin: '0.5rem 0' }}>
-                  {tags.map((t, i) => (
-                    <Link key={i} to={`/tag/${encodeURIComponent(t)}`} style={{ textDecoration: 'none' }}>
-                      <span style={{ display: 'inline-block', background: '#2b2b2b', color: '#fff', padding: '4px 8px', borderRadius: 999, marginRight: 8, fontSize: '0.85rem' }}>{t}</span>
-                    </Link>
+    <div className="drafts-page-container">
+      <div className="drafts-header">
+        <div>
+          <h2>My Drafts</h2>
+          <p>You have {drafts.length} drafts</p>
+        </div>
+        <button className="btn btn-dark" onClick={() => navigate('/create')}>
+          <i className="fas fa-plus"></i> New Post
+        </button>
+      </div>
+
+      <div className="drafts-list">
+        {drafts.length === 0 ? (
+          <p>You have no drafts.</p>
+        ) : (
+          drafts.map((d) => (
+            <div key={d.id} className="draft-card">
+              <div className="draft-card-content">
+                <h3>{d.title}</h3>
+                <p>{(d.content || '').slice(0, 100)}...</p>
+                <div className="draft-meta">
+                  <i className="far fa-calendar-alt"></i>
+                  <span>Last edited {format(new Date(d.updated_at), 'MMM d, yyyy')}</span>
+                </div>
+                <div className="draft-tags">
+                  {(d.tags || []).map((t) => (
+                    <span key={t} className="tag-pill">#{t}</span>
                   ))}
                 </div>
-              ) : null;
-            })()}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn" onClick={() => navigate(`/post/${d.id}/edit`)}>Edit</button>
-              <button className="btn" onClick={() => publish(d.id)}>Publish</button>
+              </div>
+              <div className="draft-card-actions">
+                <button className="btn-icon" onClick={() => navigate(`/post/${d.id}/edit`)}>
+                  <i className="fas fa-pencil-alt"></i>
+                </button>
+                <button className="btn-icon" onClick={() => deleteDraft(d.id)}>
+                  <i className="fas fa-trash-alt"></i>
+                </button>
+              </div>
             </div>
-          </div>
-        ))
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }
