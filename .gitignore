@@ -82,3 +82,25 @@ jspm_packages/
 client/lint_report_2.json
 client/lint_report.json
 server/test_output.txt
+server/tests/test_output*.txt
+aws-dev-blog.md
+aws-prod-blog.md
+
+# Generated deployment docs
+aws-deployment-guide.md
+aws-quick-reference.md
+budget-aws-deployment.md
+
+# Local dev scripts
+start.bat
+
+# One-time migration scripts
+server/add_profile_columns.js
+
+# Temp files
+tracked_files.txt
+*.tmp
+
+# Vercel configs (deploying to EC2 now)
+server/vercel.json
+client/vercel.json

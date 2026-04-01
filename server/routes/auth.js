@@ -11,7 +11,6 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const nodemailer = require('nodemailer');
 
 
-// --- GitHub OAuth ---
 router.get('/github', passport.authenticate('github', { scope: ['user:email', 'read:user'] }));
 
 router.get(
