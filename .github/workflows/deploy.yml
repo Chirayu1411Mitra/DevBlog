@@ -9,7 +9,7 @@ jobs:
 
   deploy-backend:
     name: Deploy Backend to EC2
-    runs-on: ubuntu-latest
+    runs-on: self-hosted 
     steps:
       - name: SSH into EC2 and deploy
         uses: appleboy/ssh-action@v1.0.3
