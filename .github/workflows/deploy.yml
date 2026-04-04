@@ -15,6 +15,7 @@ jobs:
         run: |
           cd /var/www/devblog
           git pull origin main
+          cd server
           npm ci --production
           pm2 restart devblog-api
           echo "Backend deployed"
