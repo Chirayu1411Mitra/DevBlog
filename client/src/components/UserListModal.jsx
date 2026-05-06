@@ -6,10 +6,10 @@ const UserListModal = ({ isOpen, onClose, title, users, loading, actionType, onA
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content user-list-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-card user-list-modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
                     <h3>{title}</h3>
-                    <button className="btn-close" onClick={onClose}>&times;</button>
+                    <button className="modal-close" onClick={onClose}><i className="fas fa-times"></i></button>
                 </div>
                 <div className="modal-body">
                     {loading ? (

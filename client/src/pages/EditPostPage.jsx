@@ -56,6 +56,7 @@ export default function EditPostPage() {
     if (!file) return;
 
     const formData = new FormData();
+    formData.append('type', 'blog');
     formData.append('image', file);
 
     try {
@@ -90,13 +91,13 @@ export default function EditPostPage() {
   if (loading) return <Loader />;
 
   return (
-    <div className="editor-page-container">
-      <div className="editor-card">
-        <div className="editor-header">
+    <div className="reading-container" style={{ marginTop: '2rem' }}>
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h2>Edit Post</h2>
-          <div className="editor-actions">
+          <div style={{ display: 'flex', gap: '1rem' }}>
             <button className="btn btn-secondary" onClick={() => handleSave(false)}>Save Draft</button>
-            <button className="btn btn-dark" onClick={() => handleSave(true)}>
+            <button className="btn btn-primary" onClick={() => handleSave(true)}>
               {isDraft ? 'Publish' : 'Save Changes'}
             </button>
           </div>
@@ -153,7 +154,7 @@ export default function EditPostPage() {
             <div className="tag-list-editor">
               {tags.map(tag => (
                 <span key={tag} className="tag-pill-editor">
-                  {tag}
+                  #{tag}
                   <button onClick={() => handleRemoveTag(tag)}>&times;</button>
                 </span>
               ))}

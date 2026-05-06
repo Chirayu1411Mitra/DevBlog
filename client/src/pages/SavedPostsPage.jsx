@@ -43,22 +43,31 @@ const SavedPostsPage = () => {
   }
 
   if (error) {
-    return <p style={{ color: 'red' }}>{error}</p>;
+    return (
+      <div className="main-container text-center" style={{ marginTop: '4rem' }}>
+        <p style={{ color: 'var(--danger)' }}>{error}</p>
+        <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={() => window.location.reload()}>Retry</button>
+      </div>
+    );
   }
 
   return (
-    <div className="saved-posts-page-container">
-      <div className="saved-posts-header">
-        <h2>My Saved Posts</h2>
-        <p>You have {posts.length} saved posts</p>
+    <div className="main-container" style={{ marginTop: '2rem', paddingBottom: '4rem' }}>
+      <div style={{ marginBottom: '2.5rem' }}>
+        <h2 style={{ fontSize: '2rem', fontWeight: 800 }}>My Saved Posts</h2>
+        <p style={{ color: 'var(--text-muted)' }}>You have {posts.length} saved posts</p>
       </div>
-      <div className="post-list">
+      <div className="post-grid">
         {posts.length > 0 ? (
           posts.map((post) => (
             <PostCard key={post.id} post={post} token={token} />
           ))
         ) : (
-          <p>You haven't saved any posts yet.</p>
+          <div className="card text-center" style={{ padding: '5rem 2rem', gridColumn: '1 / -1' }}>
+            <i className="far fa-bookmark" style={{ fontSize: '3rem', color: 'var(--border)', marginBottom: '1.5rem', display: 'block' }}></i>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>You haven't saved any posts yet.</p>
+            <button className="btn btn-primary" style={{ marginTop: '1.5rem' }} onClick={() => navigate('/')}>Explore Posts</button>
+          </div>
         )}
       </div>
     </div>

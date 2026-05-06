@@ -5,17 +5,16 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
 	console.error('DATABASE_URL is not set in .env. The server requires a PostgreSQL connection string.');
-	// Exit early so the app doesn't run without a DB configured
 	process.exit(1);
 }
 
+const requiresSsl = connectionString.includes('sslmode=require') || process.env.NODE_ENV === 'production';
+
 const pool = new Pool({
 	connectionString,
-	ssl: process.env.NODE_ENV === 'production' ? true : false
+	ssl: requiresSsl ? { rejectUnauthorized: false } : false
 });
 
-// Test connection strictly but don't kill the process immediately in serverless
-// Serverless environments might have cold starts or transient network issues
 pool.connect().then(client => {
 	client.release();
 	console.log('Postgres connection established');
@@ -23,17 +22,13 @@ pool.connect().then(client => {
 	console.error('Database connection warning:', err.message);
 });
 
-// Run lightweight migrations: ensure expected columns/tables exist
 (async () => {
 	try {
-		// Add draft column to posts if missing
+		await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS headline VARCHAR(255);");
 		await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS draft BOOLEAN DEFAULT FALSE;");
-		// Add tags column (text array) if missing
 		await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';");
-		// Add cover_image_url column if missing
 		await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS cover_image_url VARCHAR(255);");
 
-		// Ensure join tables exist
 		await pool.query(`CREATE TABLE IF NOT EXISTS post_likes (
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,

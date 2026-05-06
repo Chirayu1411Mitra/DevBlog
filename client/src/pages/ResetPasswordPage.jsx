@@ -42,21 +42,30 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="page-container">
-      <h2>Reset Password</h2>
-      {!token ? (
-        <p>Invalid link</p>
-      ) : valid ? (
-        <form onSubmit={handleSubmit} className="form-card">
-          <label>New password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          <label>Confirm password</label>
-          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
-          <button className="btn" type="submit">Set new password</button>
-        </form>
-      ) : (
-        <p>Validating token...</p>
-      )}
+    <div className="auth-container">
+      <div className="auth-card">
+        <div className="auth-header">
+          <h2>Reset Password</h2>
+          <p>Choose a new password for your account</p>
+        </div>
+        {!token ? (
+          <p className="text-center" style={{ color: 'var(--text-muted)' }}>Invalid link</p>
+        ) : valid ? (
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="new-password">New Password</label>
+              <input type="password" id="new-password" className="form-control" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+            </div>
+            <div className="form-group">
+              <label htmlFor="confirm-password">Confirm Password</label>
+              <input type="password" id="confirm-password" className="form-control" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" required />
+            </div>
+            <button className="btn btn-primary" type="submit" style={{ width: '100%', marginTop: '.5rem' }}>Set New Password</button>
+          </form>
+        ) : (
+          <p className="text-center" style={{ color: 'var(--text-muted)' }}>Validating token...</p>
+        )}
+      </div>
     </div>
   );
 }

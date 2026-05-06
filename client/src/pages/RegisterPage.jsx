@@ -40,8 +40,8 @@ const RegisterPage = () => {
       <div className="auth-card">
         <div className="auth-header">
           <div className="logo">
-            <i className="fas fa-file-alt"></i>
-            <span>Dev Blog</span>
+            <i className="fas fa-feather-alt"></i>
+            <span>DevBlog</span>
           </div>
           <h2>Create Account</h2>
           <p>Join our community of developers</p>
@@ -117,7 +117,7 @@ const RegisterPage = () => {
               required
             />
           </div>
-          <button type="submit" className="btn btn-dark">Create Account</button>
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>Create Account</button>
         </form>
 
         <div className="auth-footer">

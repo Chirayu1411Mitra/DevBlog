@@ -17,13 +17,12 @@ const HomePage = () => {
   const navigate = useNavigate();
   const token = sessionStorage.getItem('token');
 
-  // Debounced search effect
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       setLoading(true);
       try {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        let url = `${API_URL}/posts/top`; // Default to top 5 posts
+        let url = `${API_URL}/posts/top`;
 
         if (searchTerm.trim()) {
           url = `${API_URL}/posts/search?q=${encodeURIComponent(searchTerm.trim())}`;
@@ -38,12 +37,11 @@ const HomePage = () => {
       } finally {
         setLoading(false);
       }
-    }, 500); // 500ms debounce
+    }, 500);
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm, token]);
 
-  // Initial data fetch (tags only)
   useEffect(() => {
     const fetchTags = async () => {
       try {
@@ -56,11 +54,18 @@ const HomePage = () => {
     fetchTags();
   }, []);
 
+  const handleTagClick = (tag, e) => {
+    if (!token) {
+      e.preventDefault();
+      setShowLoginModal(true);
+    }
+  };
+
   const heroLoggedOut = (
     <section className="hero-section">
       <div className="hero-content">
-        <h2>Welcome to Dev Blog</h2>
-        <p>Discover insightful articles, tutorials, and stories from developers around the world. Join our community to start sharing your knowledge!</p>
+        <h2>Where developers write & learn</h2>
+        <p>Discover insightful articles, tutorials, and stories from developers around the world. Join our community to start sharing your knowledge.</p>
         <div className="hero-buttons">
           <button className="btn btn-primary" onClick={() => navigate('/register')}>Get Started Free</button>
           <button className="btn btn-secondary" onClick={() => navigate('/login')}>Sign In</button>
@@ -69,111 +74,56 @@ const HomePage = () => {
     </section>
   );
 
-  const headerLoggedIn = (
-    <div className="explore-header">
-      <h2>Discover Stories and Ideas</h2>
-    </div>
-  );
-
-  if (loading && posts.length === 0) {
-    return <Loader />;
-  }
-
   return (
     <div className="home-page">
-      {token ? null : heroLoggedOut}
-      <main className="home-layout">
-        <div className="posts-column">
-          {token ? headerLoggedIn : <h3 className="explore-header">Explore Articles</h3>}
-          <div className="search-bar">
-            <i className="fas fa-search"></i>
-            <input
-              type="text"
-              placeholder="Search articles..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="feed-toggle">
-            <button className="btn-tab active">{searchTerm ? 'Search Results' : 'Top 5 Liked'}</button>
-          </div>
-
-          {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
-
-          <div className="post-list">
-            {posts.length > 0 ? (
-              posts.map(post => <PostCard key={post.id} post={post} token={token} />)
-            ) : (
-              !loading && <p style={{ textAlign: 'center', padding: '2rem' }}>No posts found.</p>
-            )}
-          </div>
-        </div>
-        <aside className="sidebar-column">
-          {!token && <JoinCard />}
-          <PopularTags tags={popularTags} />
-          <StartWritingCard />
-        </aside>
-      </main>
-      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
-    </div>
-  );
-};
-
-const JoinCard = () => {
-  const navigate = useNavigate();
-  return (
-    <div className="sidebar-card">
-      <div className="card-icon"><i className="fas fa-user-plus"></i></div>
-      <h4>Join Dev Blog</h4>
-      <p>Create an account to like, bookmark, comment, and write your own posts!</p>
-      <button className="btn btn-dark" onClick={() => navigate('/register')}>Create Account</button>
-      <button className="btn btn-link" onClick={() => navigate('/login')}>Sign In</button>
-    </div>
-  );
-};
-
-const PopularTags = ({ tags }) => {
-  const token = sessionStorage.getItem('token');
-  const [showLoginModal, setShowLoginModal] = useState(false);
-
-  const handleTagClick = (tag, e) => {
-    if (!token) {
-      e.preventDefault();
-      setShowLoginModal(true);
-    }
-  };
-
-  return (
-    <>
-      <div className="sidebar-card">
-        <h4>Popular Tags</h4>
-        <ul className="tag-list">
-          {tags.map(tag => (
-            <li key={tag.tag}>
-              <Link
-                to={`/tag/${tag.tag}`}
-                onClick={(e) => handleTagClick(tag.tag, e)}
-              >
-                #{tag.tag}
-              </Link>
-              <span>{tag.count}</span>
-            </li>
-          ))}
-        </ul>
-        {!token && <button className="btn btn-link">Sign in to filter posts by tags</button>}
+      {!token && heroLoggedOut}
+      
+      <div className="search-container">
+        <i className="fas fa-search"></i>
+        <input
+          type="text"
+          placeholder="Search for articles, tutorials, or ideas..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
-      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
-    </>
-  );
-};
 
-const StartWritingCard = () => {
-  const navigate = useNavigate();
-  return (
-    <div className="sidebar-card cta-card">
-      <h4>Start Writing</h4>
-      <p>Share your knowledge with the developer community.</p>
-      <button className="btn btn-light" onClick={() => navigate('/create')}>Get Started</button>
+      {popularTags.length > 0 && (
+        <div className="popular-tags-bar">
+          {popularTags.map(tag => (
+            <Link
+              key={tag.tag}
+              to={`/tag/${tag.tag}`}
+              className="tag-pill"
+              onClick={(e) => handleTagClick(tag.tag, e)}
+            >
+              #{tag.tag} ({tag.count})
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <div className="post-grid-header">
+        <h3>{searchTerm ? 'Search Results' : 'Top Stories'}</h3>
+      </div>
+
+      {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
+      
+      {loading && posts.length === 0 ? (
+        <Loader />
+      ) : (
+        <div className="post-grid">
+          {posts.length > 0 ? (
+            posts.map(post => <PostCard key={post.id} post={post} token={token} />)
+          ) : (
+            <p style={{ textAlign: 'center', gridColumn: '1 / -1', padding: '3rem', color: 'var(--text-light)' }}>
+              No posts found. Try another search.
+            </p>
+          )}
+        </div>
+      )}
+
+      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
     </div>
   );
 };

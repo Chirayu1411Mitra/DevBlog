@@ -25,7 +25,6 @@ router.get(
     }
 );
 
-// --- Email/password register ---
 router.post('/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -33,7 +32,6 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ message: 'username, email and password are required' });
         }
 
-        // check existing user by email or username
         const existing = await db.query('SELECT id FROM users WHERE email = $1 OR username = $2', [email, username]);
         if (existing.rows.length) {
             return res.status(400).json({ message: 'User with that email or username already exists' });
@@ -56,7 +54,6 @@ router.post('/register', async (req, res) => {
 });
 
 
-// --- Email/password login ---
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -84,11 +81,10 @@ router.post('/login', async (req, res) => {
 });
 
 
-// Return the authenticated user's info (without sensitive fields)
 router.get('/me', protect, async (req, res) => {
     try {
         const userId = req.user.id;
-        const result = await db.query('SELECT id, username, email, avatar_url, github_id, created_at FROM users WHERE id = $1', [userId]);
+        const result = await db.query('SELECT id, username, email, avatar_url, headline, github_id, created_at FROM users WHERE id = $1', [userId]);
         const user = result.rows[0];
         if (!user) return res.status(404).json({ message: 'User not found' });
         res.json({ user });
@@ -98,18 +94,15 @@ router.get('/me', protect, async (req, res) => {
     }
 });
 
-// Update current user's profile (username, email, password)
 router.put('/me', protect, async (req, res) => {
     try {
         const userId = req.user.id;
         const { username, email, password, currentPassword } = req.body;
 
-        // Validate presence of at least one field
         if (!username && !email && !password) {
             return res.status(400).json({ message: 'No fields to update' });
         }
 
-        // Check uniqueness for username/email if provided
         if (username || email) {
             const check = await db.query(
                 'SELECT id FROM users WHERE (username = $1 OR email = $2) AND id <> $3',
@@ -120,7 +113,6 @@ router.put('/me', protect, async (req, res) => {
             }
         }
 
-        // If password is being changed, verify currentPassword if an existing password exists
         if (password) {
             const r = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
             const userRec = r.rows[0];
@@ -131,17 +123,17 @@ router.put('/me', protect, async (req, res) => {
             }
         }
 
-        // Build update dynamically
         const fields = [];
         const params = [];
         let idx = 1;
-        const { bio, avatar_url, banner_url } = req.body;
+        const { bio, avatar_url, banner_url, headline } = req.body;
 
         if (username) { fields.push(`username = $${idx++}`); params.push(username); }
         if (email) { fields.push(`email = $${idx++}`); params.push(email); }
         if (bio !== undefined) { fields.push(`bio = $${idx++}`); params.push(bio); }
         if (avatar_url !== undefined) { fields.push(`avatar_url = $${idx++}`); params.push(avatar_url); }
         if (banner_url !== undefined) { fields.push(`banner_url = $${idx++}`); params.push(banner_url); }
+        if (headline !== undefined) { fields.push(`headline = $${idx++}`); params.push(headline); }
 
         if (password) {
             const salt = await bcrypt.genSalt(10);
@@ -153,7 +145,7 @@ router.put('/me', protect, async (req, res) => {
         if (fields.length === 0) return res.status(400).json({ message: 'No fields to update' });
 
         params.push(userId);
-        const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, username, email, avatar_url, banner_url, bio, github_id, created_at`;
+        const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, username, email, avatar_url, banner_url, bio, headline, github_id, created_at`;
         const updated = await db.query(sql, params);
         res.json({ user: updated.rows[0] });
     } catch (err) {
@@ -162,11 +154,9 @@ router.put('/me', protect, async (req, res) => {
     }
 });
 
-// Get posts authored by the current user
 router.get('/my-posts', protect, async (req, res) => {
     try {
         const userId = req.user.id;
-        // Return only published posts for the profile view; drafts are returned via the dedicated my-drafts endpoint
         const result = await db.query('SELECT * FROM posts WHERE user_id = $1 AND draft = false ORDER BY created_at DESC', [userId]);
         res.json(result.rows);
     } catch (err) {
@@ -175,7 +165,6 @@ router.get('/my-posts', protect, async (req, res) => {
     }
 });
 
-// Get posts saved by the current user
 router.get('/me/saved-posts', protect, async (req, res) => {
     try {
         const userId = req.user.id;
@@ -195,7 +184,6 @@ router.get('/me/saved-posts', protect, async (req, res) => {
     }
 });
 
-// Verify current password (used before allowing password change)
 router.post('/verify-password', protect, async (req, res) => {
     try {
         const { currentPassword } = req.body;
@@ -217,7 +205,6 @@ router.post('/verify-password', protect, async (req, res) => {
     }
 });
 
-// --- Forgot password: create reset token and send email ---
 router.post('/forgot', async (req, res) => {
     try {
         const { email } = req.body;
@@ -227,10 +214,8 @@ router.post('/forgot', async (req, res) => {
         const user = result.rows[0];
         if (!user) return res.status(200).json({ message: 'If that email exists, a reset link has been sent' });
 
-        // create token
         const token = require('crypto').randomBytes(32).toString('hex');
-        const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
-        // ensure table exists (defensive in case schema wasn't applied)
+        const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
         await db.query(`CREATE TABLE IF NOT EXISTS password_resets (
             id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -242,14 +227,13 @@ router.post('/forgot', async (req, res) => {
 
         await db.query('INSERT INTO password_resets (user_id, token, expires_at, used) VALUES ($1, $2, $3, $4)', [user.id, token, expiresAt, false]);
 
-        // prepare transporter (SMTP config via env)
         const transporter = nodemailer.createTransport({
             host: process.env.SMTP_HOST || 'smtp.gmail.com',
             port: Number(process.env.SMTP_PORT) || 465,
             secure: process.env.SMTP_SECURE === 'false' ? false : true,
             auth: {
                 user: process.env.SMTP_USER || process.env.EMAIL_USER,
-                pass: process.env.SMTP_PASS || process.env.EMAIL_PASS // keep space for app password
+                pass: process.env.SMTP_PASS || process.env.EMAIL_PASS
             }
         });
 
@@ -262,7 +246,6 @@ router.post('/forgot', async (req, res) => {
             html: `<p>Hello ${user.username || ''},</p><p>You requested a password reset. Click the link below to reset your password:</p><p><a href="${resetLink}">${resetLink}</a></p><p>If you did not request this, ignore this email. Link expires in 1 hour.</p>`
         };
 
-        // send mail (don't fail if transporter not configured properly - fail silently)
         transporter.sendMail(mailOptions, (err, info) => {
             if (err) {
                 console.error('Forgot password email error:', err);
@@ -279,7 +262,6 @@ router.post('/forgot', async (req, res) => {
     }
 });
 
-// Validate reset token
 router.get('/reset/:token', async (req, res) => {
     try {
         const { token } = req.params;
@@ -295,7 +277,6 @@ router.get('/reset/:token', async (req, res) => {
     }
 });
 
-// Perform reset: set new password
 router.post('/reset/:token', async (req, res) => {
     try {
         const { token } = req.params;
@@ -308,12 +289,10 @@ router.post('/reset/:token', async (req, res) => {
         if (rec.used) return res.status(400).json({ message: 'Token already used' });
         if (new Date(rec.expires_at) < new Date()) return res.status(400).json({ message: 'Token expired' });
 
-        // update user's password
         const salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash(password, salt);
         await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, rec.user_id]);
 
-        // mark token used
         await db.query('UPDATE password_resets SET used = true WHERE id = $1', [rec.id]);
 
         res.json({ message: 'Password has been reset' });

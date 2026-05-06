@@ -46,14 +46,6 @@ const Header = () => {
     };
   }, []);
 
-  // Theme toggle
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
   const handleLogout = () => {
     sessionStorage.removeItem('token');
     setUser(null);
@@ -65,25 +57,14 @@ const Header = () => {
     <header className="main-header">
       <div className="header-container">
         <Link to="/" className="header-logo">
-          <i className="fas fa-file-alt"></i>
-          <span>Dev Blog</span>
+          <i className="fas fa-feather-alt"></i>
+          <span>DevBlog</span>
         </Link>
         <nav className="header-nav">
-          <label className="theme-toggle" title="Theme" aria-label="Theme toggle" style={{ marginRight: '1rem' }}>
-            <input
-              type="checkbox"
-              checked={theme === 'light'}
-              onChange={(e) => setTheme(e.target.checked ? 'light' : 'dark')}
-              aria-checked={theme === 'light'}
-            />
-            <span className="track">
-              <span className="thumb" />
-            </span>
-          </label>
           {user ? (
             <>
-              <button className="btn btn-write" onClick={() => navigate('/create')}>
-                <i className="fas fa-pencil-alt"></i> Write
+              <button className="btn btn-primary" style={{ borderRadius: '99px', padding: '.5rem 1.25rem' }} onClick={() => navigate('/create')}>
+                <i className="fas fa-pen"></i> Write
               </button>
               <div className="profile-menu" ref={dropdownRef}>
                 <button className="profile-avatar-btn" onClick={() => setDropdownOpen(!dropdownOpen)}>
@@ -94,7 +75,6 @@ const Header = () => {
                       {(user.username || '?').charAt(0).toUpperCase()}
                     </span>
                   )}
-                  <span className="header-username">{user.username}</span>
                 </button>
                 {dropdownOpen && (
                   <div className="dropdown-menu">
@@ -102,13 +82,13 @@ const Header = () => {
                       <i className="fas fa-user-circle"></i> Profile
                     </Link>
                     <Link to="/my-drafts" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
-                      <i className="fas fa-file-medical"></i> My Drafts
+                      <i className="fas fa-file-alt"></i> My Drafts
                     </Link>
                     <Link to="/saved-posts" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
                       <i className="fas fa-bookmark"></i> Saved Posts
                     </Link>
                     <div className="dropdown-divider"></div>
-                    <button onClick={handleLogout} className="dropdown-item">
+                    <button onClick={handleLogout} className="dropdown-item" style={{ color: 'var(--danger)' }}>
                       <i className="fas fa-sign-out-alt"></i> Log out
                     </button>
                   </div>

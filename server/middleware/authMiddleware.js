@@ -34,7 +34,6 @@ const optionalProtect = asyncHandler(async (req, res, next) => {
             const result = await db.query('SELECT id, username, email, avatar_url FROM users WHERE id = $1', [decoded.id]);
             req.user = result.rows[0];
         } catch (error) {
-            // Don't throw an error, just proceed without a user
             console.error('Optional auth error:', error.message);
         }
     }

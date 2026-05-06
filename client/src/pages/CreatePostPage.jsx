@@ -32,6 +32,7 @@ const CreatePostPage = () => {
     if (!file) return;
 
     const formData = new FormData();
+    formData.append('type', 'blog');
     formData.append('image', file);
 
     try {
@@ -73,33 +74,35 @@ const CreatePostPage = () => {
   };
 
   return (
-    <div className="editor-page-container">
-      <div className="editor-card">
-        <div className="editor-header">
+    <div className="reading-container" style={{ marginTop: '2rem' }}>
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h2>Create New Post</h2>
-          <div className="editor-actions">
+          <div style={{ display: 'flex', gap: '1rem' }}>
             <button className="btn btn-secondary" onClick={() => handleSubmit(true)}>Save Draft</button>
-            <button className="btn btn-dark" onClick={() => handleSubmit(false)}>Publish</button>
+            <button className="btn btn-primary" onClick={() => handleSubmit(false)}>Publish</button>
           </div>
         </div>
 
         <div className="editor-form">
           <div className="editor-form-group">
-            <label htmlFor="cover-image">Cover Image (optional)</label>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImageUpload}
-              style={{ display: 'none' }}
-              accept="image/*"
-            />
-            <button type="button" className="btn-upload" onClick={() => fileInputRef.current.click()}>
-              <i className="fas fa-upload"></i> Upload Image
-            </button>
-            <span className="upload-hint">Max size: 5MB (JPG, PNG, GIF, WebP)</span>
+            <label htmlFor="cover-image">Cover Image</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                style={{ display: 'none' }}
+                accept="image/*"
+              />
+              <button type="button" className="btn-upload" onClick={() => fileInputRef.current.click()}>
+                <i className="fas fa-upload"></i> Upload Image
+              </button>
+              <span className="upload-hint">Max size: 5MB (JPG, PNG, WebP)</span>
+            </div>
             {coverImageUrl && (
               <div className="image-preview">
-                <img src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:6969'}${coverImageUrl}`} alt="Cover preview" />
+                <img src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:6969'}${coverImageUrl}`} alt="Cover Preview" />
               </div>
             )}
           </div>
@@ -109,10 +112,10 @@ const CreatePostPage = () => {
             <input
               type="text"
               id="title"
+              className="editor-input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter your post title..."
-              className="editor-input"
               required
             />
           </div>
@@ -123,19 +126,18 @@ const CreatePostPage = () => {
               <input
                 type="text"
                 id="tags"
+                className="editor-input"
                 value={currentTag}
                 onChange={(e) => setCurrentTag(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
                 placeholder="Add a tag..."
-                className="editor-input"
               />
               <button type="button" className="btn btn-dark" onClick={handleAddTag}>Add</button>
             </div>
             <div className="tag-list-editor">
-              {tags.map(tag => (
-                <span key={tag} className="tag-pill-editor">
-                  {tag}
-                  <button onClick={() => handleRemoveTag(tag)}>&times;</button>
+              {tags.map((tag, index) => (
+                <span key={index} className="tag-pill-editor">
+                  #{tag} <button onClick={() => handleRemoveTag(tag)}>&times;</button>
                 </span>
               ))}
             </div>
@@ -145,10 +147,10 @@ const CreatePostPage = () => {
             <label htmlFor="content">Content</label>
             <textarea
               id="content"
+              className="editor-textarea"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Write your post content here... (Markdown supported)"
-              className="editor-textarea"
               rows={15}
               required
             />

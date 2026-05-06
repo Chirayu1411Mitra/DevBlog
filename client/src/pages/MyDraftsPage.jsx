@@ -53,41 +53,46 @@ export default function MyDraftsPage() {
   if (loading) return <Loader />;
 
   return (
-    <div className="drafts-page-container">
-      <div className="drafts-header">
+    <div className="main-container" style={{ marginTop: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
         <div>
-          <h2>My Drafts</h2>
-          <p>You have {drafts.length} drafts</p>
+          <h2 style={{ fontSize: '2rem', fontWeight: 800 }}>My Drafts</h2>
+          <p style={{ color: 'var(--text-muted)' }}>You have {drafts.length} drafts</p>
         </div>
-        <button className="btn btn-dark" onClick={() => navigate('/create')}>
+        <button className="btn btn-primary" onClick={() => navigate('/create')}>
           <i className="fas fa-plus"></i> New Post
         </button>
       </div>
 
-      <div className="drafts-list">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {drafts.length === 0 ? (
-          <p>You have no drafts.</p>
+          <div className="card text-center" style={{ padding: '4rem 2rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>You have no drafts.</p>
+            <button className="btn btn-secondary" style={{ marginTop: '1.5rem' }} onClick={() => navigate('/create')}>Start Writing</button>
+          </div>
         ) : (
           drafts.map((d) => (
-            <div key={d.id} className="draft-card">
-              <div className="draft-card-content">
-                <h3>{d.title}</h3>
-                <p>{(d.content || '').slice(0, 100)}...</p>
-                <div className="draft-meta">
-                  <i className="far fa-calendar-alt"></i>
-                  <span>Last edited {format(new Date(d.updated_at), 'MMM d, yyyy')}</span>
-                </div>
-                <div className="draft-tags">
-                  {(d.tags || []).map((t) => (
-                    <span key={t} className="tag-pill">#{t}</span>
-                  ))}
+            <div key={d.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', padding: '1.5rem', alignItems: 'center' }}>
+              <div style={{ flex: 1, paddingRight: '2rem' }}>
+                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{d.title || 'Untitled Draft'}</h3>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '.95rem' }}>{(d.content || '').slice(0, 120)}...</p>
+                <div style={{ display: 'flex', gap: '1.25rem', color: 'var(--text-dim)', fontSize: '0.85rem', alignItems: 'center' }}>
+                  <span>
+                    <i className="far fa-calendar-alt" style={{ marginRight: '6px' }}></i>
+                    Last edited {format(new Date(d.updated_at), 'MMM d, yyyy')}
+                  </span>
+                  <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                    {(d.tags || []).map((t) => (
+                      <span key={t} className="tag-pill">#{t}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div className="draft-card-actions">
-                <button className="btn-icon" onClick={() => navigate(`/post/${d.id}/edit`)}>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/post/${d.id}/edit`)} title="Edit Draft">
                   <i className="fas fa-pencil-alt"></i>
                 </button>
-                <button className="btn-icon" onClick={() => deleteDraft(d.id)}>
+                <button className="btn btn-outline-danger btn-sm" onClick={() => deleteDraft(d.id)} title="Delete Draft">
                   <i className="fas fa-trash-alt"></i>
                 </button>
               </div>

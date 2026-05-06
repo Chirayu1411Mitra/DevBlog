@@ -7,10 +7,11 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
 const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
     const [formData, setFormData] = useState({
         username: '',
-        email: '', // Read-only or editable? Let's generic update supports it, but maybe safer to keep read-only for now or just prefill
+        email: '',
         bio: '',
         avatar_url: '',
         banner_url: '',
+        headline: '',
         password: '',
         currentPassword: ''
     });
@@ -26,6 +27,7 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
                 bio: user.bio || '',
                 avatar_url: user.avatar_url || '',
                 banner_url: user.banner_url || '',
+                headline: user.headline || '',
                 password: '',
                 currentPassword: ''
             });
@@ -41,6 +43,8 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
         if (!file) return;
 
         const uploadData = new FormData();
+        const type = field === 'avatar_url' ? 'profile' : field === 'banner_url' ? 'banner' : 'other';
+        uploadData.append('type', type);
         uploadData.append('image', file);
 
         try {
@@ -67,13 +71,12 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
         try {
             const payload = {
                 username: formData.username,
-                // email: formData.email, // Avoiding email change for simplicity unless requested
                 bio: formData.bio,
                 avatar_url: formData.avatar_url,
-                banner_url: formData.banner_url
+                banner_url: formData.banner_url,
+                headline: formData.headline
             };
 
-            // Only send password fields if user is trying to change password
             if (formData.password) {
                 payload.password = formData.password;
                 payload.currentPassword = formData.currentPassword;
@@ -105,10 +108,11 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content edit-profile-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-card edit-profile-modal" onClick={e => e.stopPropagation()}>
+                <button className="modal-close" onClick={onClose}><i className="fas fa-times"></i></button>
                 <div className="modal-header">
                     <h3>Edit Profile</h3>
-                    <button className="btn-close" onClick={onClose}>&times;</button>
+                    <p>Update your personal information and profile appearance</p>
                 </div>
                 <div className="modal-body">
                     <form onSubmit={handleSubmit} className="edit-profile-form">
@@ -117,11 +121,11 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
                                 className="modal-banner-preview"
                                 style={{
                                     backgroundImage: formData.banner_url ? `url(${getImageUrl(formData.banner_url)})` : 'none',
-                                    backgroundColor: formData.banner_url ? 'transparent' : 'var(--bg-color)'
+                                    backgroundColor: formData.banner_url ? 'transparent' : 'var(--elevated)'
                                 }}
                             >
                                 <label className="upload-overlay banner-overlay">
-                                    <span className="overlay-icon">📷</span>
+                                    <i className="fas fa-camera overlay-icon"></i>
                                     <span>Change Banner</span>
                                     <input type="file" onChange={(e) => handleFileChange(e, 'banner_url')} accept="image/*" hidden />
                                 </label>
@@ -134,7 +138,7 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
                                     className="modal-avatar-preview"
                                 />
                                 <label className="upload-overlay avatar-overlay">
-                                    <span className="overlay-icon">📷</span>
+                                    <i className="fas fa-camera overlay-icon"></i>
                                     <input type="file" onChange={(e) => handleFileChange(e, 'avatar_url')} accept="image/*" hidden />
                                 </label>
                             </div>
@@ -148,11 +152,21 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
                                     name="username"
                                     value={formData.username}
                                     onChange={handleChange}
-                                    className="form-input"
+                                    className="form-control"
                                     required
                                 />
                             </div>
-                            {/* Email could go here if editable */}
+                            <div className="form-group">
+                                <label>Headline</label>
+                                <input
+                                    type="text"
+                                    name="headline"
+                                    value={formData.headline}
+                                    onChange={handleChange}
+                                    className="form-control"
+                                    placeholder="e.g. Developer & Writer"
+                                />
+                            </div>
                         </div>
 
                         <div className="form-group">
@@ -161,7 +175,7 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
                                 name="bio"
                                 value={formData.bio}
                                 onChange={handleChange}
-                                className="form-input"
+                                className="form-control"
                                 rows="3"
                                 placeholder="Tell us about yourself..."
                             />
@@ -177,7 +191,8 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
                                 name="password"
                                 value={formData.password}
                                 onChange={handleChange}
-                                className="form-input"
+                                className="form-control"
+                                placeholder="Leave blank to keep current"
                             />
                         </div>
                         {formData.password && (
@@ -188,7 +203,8 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
                                     name="currentPassword"
                                     value={formData.currentPassword}
                                     onChange={handleChange}
-                                    className="form-input"
+                                    className="form-control"
+                                    placeholder="Required to change password"
                                     required
                                 />
                             </div>

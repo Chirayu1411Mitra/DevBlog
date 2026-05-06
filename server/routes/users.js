@@ -3,16 +3,14 @@ const db = require('../db/db');
 const { optionalProtect, protect } = require('../middleware/authMiddleware');
 const router = express.Router();
 
-// GET public user profile by username
 router.get('/:username', optionalProtect, async (req, res) => {
     try {
         const { username } = req.params;
         const currentUserId = req.user ? req.user.id : null;
 
-        // Get user info, follower/following counts
         const userSql = `
             SELECT 
-                u.id, u.username, u.avatar_url, u.banner_url, u.bio, u.created_at,
+                u.id, u.username, u.avatar_url, u.banner_url, u.bio, u.headline, u.created_at,
                 (SELECT COUNT(*) FROM user_follows WHERE following_id = u.id) as followers_count,
                 (SELECT COUNT(*) FROM user_follows WHERE follower_id = u.id) as following_count,
                 (CASE WHEN $2::INTEGER IS NOT NULL AND EXISTS (SELECT 1 FROM user_follows WHERE follower_id = $2 AND following_id = u.id) THEN true ELSE false END) as is_following
@@ -27,7 +25,6 @@ router.get('/:username', optionalProtect, async (req, res) => {
 
         const user = userResult.rows[0];
 
-        // Get user's published posts
         const postsResult = await db.query(
             `SELECT 
                 p.*, 
@@ -50,7 +47,6 @@ router.get('/:username', optionalProtect, async (req, res) => {
     }
 });
 
-// Follow / Unfollow a user
 router.post('/:id/follow', protect, async (req, res) => {
     try {
         const followingId = parseInt(req.params.id, 10);
@@ -60,21 +56,18 @@ router.post('/:id/follow', protect, async (req, res) => {
             return res.status(400).json({ message: 'You cannot follow yourself.' });
         }
 
-        // Check if already following
         const followResult = await db.query(
             'SELECT * FROM user_follows WHERE follower_id = $1 AND following_id = $2',
             [followerId, followingId]
         );
 
         if (followResult.rows.length > 0) {
-            // Unfollow
             await db.query(
                 'DELETE FROM user_follows WHERE follower_id = $1 AND following_id = $2',
                 [followerId, followingId]
             );
             res.json({ following: false, message: 'User unfollowed.' });
         } else {
-            // Follow
             await db.query(
                 'INSERT INTO user_follows (follower_id, following_id) VALUES ($1, $2)',
                 [followerId, followingId]
@@ -87,7 +80,6 @@ router.post('/:id/follow', protect, async (req, res) => {
     }
 });
 
-// Get user followers
 router.get('/:id/followers', async (req, res) => {
     try {
         const { id } = req.params;
@@ -108,7 +100,6 @@ router.get('/:id/followers', async (req, res) => {
     }
 });
 
-// Get user following
 router.get('/:id/following', async (req, res) => {
     try {
         const { id } = req.params;
@@ -129,7 +120,6 @@ router.get('/:id/following', async (req, res) => {
     }
 });
 
-// Remove a follower (block/remove from followers list)
 router.delete('/followers/:id', protect, async (req, res) => {
     try {
         const followerId = parseInt(req.params.id, 10);

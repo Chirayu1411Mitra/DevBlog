@@ -8,7 +8,6 @@ module.exports = function (passport) {
             ? `${process.env.SERVER_URL}/api/auth/github/callback`
             : `http://localhost:6969/api/auth/github/callback`;
 
-        // Helpful runtime logging for debugging OAuth issues
         console.log('Passport GitHub callback URL:', callbackURL);
         if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
             console.warn('GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET is not set. GitHub OAuth will fail.');
@@ -31,16 +30,13 @@ module.exports = function (passport) {
                     let user = userResult.rows[0];
 
                     if (user) {
-                        // Update token and maybe avatar on every login
                         await db.query('UPDATE users SET github_access_token = $1, avatar_url = $2 WHERE github_id = $3', [accessToken, avatar_url, id]);
                         return done(null, user);
                     }
 
-                    // Check if email is already in use by a local account
                     if (email) {
                         const existingEmail = await db.query('SELECT * FROM users WHERE email = $1', [email]);
                         if (existingEmail.rows.length > 0) {
-                            // Link GitHub to existing local account
                             const existingUser = existingEmail.rows[0];
                             await db.query('UPDATE users SET github_id = $1, github_access_token = $2, avatar_url = $3 WHERE id = $4', [id, accessToken, avatar_url, existingUser.id]);
                             return done(null, existingUser);

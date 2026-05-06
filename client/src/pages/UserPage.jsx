@@ -33,7 +33,6 @@ const UserPage = () => {
   const [currentUsername, setCurrentUsername] = useState(null);
 
   useEffect(() => {
-    // Decode token or fetch 'me' to get current username to compare
     const fetchMe = async () => {
       if (token) {
         try {
@@ -88,7 +87,6 @@ const UserPage = () => {
   };
 
   const handleProfileUpdate = (updatedUser) => {
-    // Update local profile state
     setProfile(prev => ({
       ...prev,
       user: {
@@ -96,7 +94,6 @@ const UserPage = () => {
         ...updatedUser
       }
     }));
-    // If username changed, we might need to navigate or just update state 
     if (updatedUser.username !== username) {
       navigate(`/user/${updatedUser.username}`, { replace: true });
     }
@@ -132,10 +129,6 @@ const UserPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setModalUsers(prev => prev.filter(u => u.id !== targetUserId));
-      // If viewing own profile, "Following" count decreases
-      if (isOwnProfile) {
-        setFollowersCount(prev => prev); // Trigger re-render if needed, but mainly list update
-      }
       addToast('Unfollowed user', { type: 'success' });
     } catch (err) {
       console.error(err);
@@ -158,8 +151,12 @@ const UserPage = () => {
   };
 
   if (loading) return <Loader />;
-  if (error) return <p style={{ color: 'red' }}>{error}</p>;
-  if (!profile) return <p>User not found.</p>;
+  if (error) return (
+    <div className="main-container text-center" style={{ marginTop: '4rem' }}>
+      <p style={{ color: 'var(--danger)' }}>{error}</p>
+      <button className="btn btn-secondary" style={{ marginTop: '1rem' }} onClick={() => navigate('/')}>Go Home</button>
+    </div>
+  );
 
   const { user, posts } = profile;
   const isOwnProfile = currentUsername === user.username;
@@ -174,13 +171,13 @@ const UserPage = () => {
   const renderProfileActions = () => {
     if (isOwnProfile) {
       return (
-        <button className="btn btn-light" onClick={handleEditProfile} style={{ border: '1px solid var(--border-color)' }}>
+        <button className="btn btn-secondary" onClick={handleEditProfile}>
           Edit Profile
         </button>
       );
     } else {
       return (
-        <button className="btn btn-dark" onClick={handleFollow}>
+        <button className="btn btn-primary" onClick={handleFollow}>
           {isFollowing ? 'Unfollow' : 'Follow'}
         </button>
       );
@@ -188,25 +185,24 @@ const UserPage = () => {
   };
 
   return (
-    <div className="user-page">
+    <div className="main-container user-page" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
       <div
         className="profile-header"
         style={{
           backgroundImage: getImageUrl(user.banner_url)
-            ? `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url(${getImageUrl(user.banner_url)})`
-            : 'linear-gradient(135deg, var(--primary-color), var(--secondary-color))'
+            ? `linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.5)), url(${getImageUrl(user.banner_url)})`
+            : 'linear-gradient(135deg, var(--accent), #4338ca)'
         }}
       >
         <div className="profile-info-container">
-          <div className="profile-avatar-wrapper">
-            <img
-              src={getImageUrl(user.avatar_url) || `https://ui-avatars.com/api/?name=${user.username}&background=random`}
-              alt={user.username}
-              className="profile-avatar"
-            />
-          </div>
+          <img
+            src={getImageUrl(user.avatar_url) || `https://ui-avatars.com/api/?name=${user.username}&background=random`}
+            alt={user.username}
+            className="profile-avatar"
+          />
           <div className="profile-details">
             <h1 className="profile-username">{user.username}</h1>
+            {user.headline && <p style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '0.9rem', marginTop: '0.25rem' }}>{user.headline}</p>}
             {user.bio && <p className="profile-bio">{user.bio}</p>}
             <div className="profile-stats">
               <span onClick={() => openUserList('followers')} className="clickable">
@@ -217,26 +213,27 @@ const UserPage = () => {
               </span>
               <span><strong>{posts.length}</strong> Posts</span>
             </div>
-            <div className="profile-actions">
+            <div className="profile-actions" style={{ marginTop: '0.75rem' }}>
               {renderProfileActions()}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="profile-content">
-        <h2 className="section-title">
-          {isOwnProfile ? 'My Posts' : `${user.username}'s Posts`}
-        </h2>
+      <div className="profile-page-body">
+        <div className="post-grid-header" style={{ marginBottom: '1.5rem' }}>
+          <h3>{isOwnProfile ? 'My Stories' : `${user.username}'s Stories`}</h3>
+        </div>
+        
         {posts.length === 0 ? (
-          <div className="no-posts">
-            <p>No posts yet.</p>
+          <div className="card text-center" style={{ padding: '5rem 2rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>No stories published yet.</p>
             {isOwnProfile && (
-              <Link to="/write" className="btn btn-primary">Create First Post</Link>
+              <button className="btn btn-primary" style={{ marginTop: '1.5rem' }} onClick={() => navigate('/create')}>Create First Story</button>
             )}
           </div>
         ) : (
-          <div className="posts-grid">
+          <div className="post-grid">
             {posts.map(post => (
               <PostCard key={post.id} post={{ ...post, username: user.username, avatar_url: user.avatar_url }} token={token} />
             ))}
@@ -245,14 +242,12 @@ const UserPage = () => {
       </div>
 
       {isOwnProfile && (
-        <>
-          <EditProfileModal
-            isOpen={showEditProfileModal}
-            onClose={() => setShowEditProfileModal(false)}
-            user={user}
-            onUpdate={handleProfileUpdate}
-          />
-        </>
+        <EditProfileModal
+          isOpen={showEditProfileModal}
+          onClose={() => setShowEditProfileModal(false)}
+          user={user}
+          onUpdate={handleProfileUpdate}
+        />
       )}
       <UserListModal
         isOpen={showFollowersModal}
@@ -271,12 +266,6 @@ const UserPage = () => {
         loading={modalLoading}
         actionType={isOwnProfile ? 'unfollow' : null}
         onAction={handleUnfollowUser}
-      />
-      <EditProfileModal
-        isOpen={showEditProfileModal}
-        onClose={() => setShowEditProfileModal(false)}
-        user={isOwnProfile ? user : null} // Pass current user data
-        onUpdate={handleProfileUpdate}
       />
     </div>
   );
