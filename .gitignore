@@ -101,6 +101,7 @@ server/add_profile_columns.js
 tracked_files.txt
 *.tmp
 
-# Vercel configs (deploying to EC2 now)
+# Vercel configs
+.vercel/
 server/vercel.json
 client/vercel.json
