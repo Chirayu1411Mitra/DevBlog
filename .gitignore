@@ -102,6 +102,4 @@ tracked_files.txt
 *.tmp
 
 # Vercel configs
-.vercel/
-server/vercel.json
-client/vercel.json
+
