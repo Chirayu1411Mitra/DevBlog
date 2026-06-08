@@ -13,15 +13,21 @@ const nodemailer = require('nodemailer');
 
 router.get('/github', passport.authenticate('github', { scope: ['user:email', 'read:user'] }));
 
+const getClientUrl = () => {
+    let url = process.env.CLIENT_URL || 'http://localhost:5173';
+    if (url.endsWith('/')) url = url.slice(0, -1);
+    return url;
+};
+
 router.get(
     '/github/callback',
-    passport.authenticate('github', { session: false, failureRedirect: `${process.env.CLIENT_URL}/login` }),
+    passport.authenticate('github', { session: false, failureRedirect: `${getClientUrl()}/login` }),
     (req, res) => {
         const user = req.user;
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
             expiresIn: '30d',
         });
-        res.redirect(`${process.env.CLIENT_URL}/auth/callback?token=${token}`);
+        res.redirect(`${getClientUrl()}/auth/callback?token=${token}`);
     }
 );
 

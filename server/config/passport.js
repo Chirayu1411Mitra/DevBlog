@@ -4,14 +4,17 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 module.exports = function (passport) {
-        const callbackURL = process.env.SERVER_URL
-            ? `${process.env.SERVER_URL}/api/auth/github/callback`
-            : `http://localhost:6969/api/auth/github/callback`;
+    let serverUrl = process.env.SERVER_URL || 'http://localhost:6969';
+    // Remove trailing slash if present
+    if (serverUrl.endsWith('/')) {
+        serverUrl = serverUrl.slice(0, -1);
+    }
+    const callbackURL = `${serverUrl}/api/auth/github/callback`;
 
-        console.log('Passport GitHub callback URL:', callbackURL);
-        if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
-            console.warn('GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET is not set. GitHub OAuth will fail.');
-        }
+    console.log('Passport GitHub callback URL:', callbackURL);
+    if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
+        console.warn('GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET is not set. GitHub OAuth will fail.');
+    }
 
     passport.use(
         new GitHubStrategy(
@@ -19,6 +22,7 @@ module.exports = function (passport) {
                 clientID: process.env.GITHUB_CLIENT_ID,
                 clientSecret: process.env.GITHUB_CLIENT_SECRET,
                 callbackURL,
+                proxy: true,
             },
             async (accessToken, refreshToken, profile, done) => {
                 try {

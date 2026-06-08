@@ -25,6 +25,9 @@ pool.connect().then(client => {
 (async () => {
 	try {
 		await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS headline VARCHAR(255);");
+		await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS github_id VARCHAR(255) UNIQUE;");
+		await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS github_access_token TEXT;");
+		await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(255);");
 		await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS draft BOOLEAN DEFAULT FALSE;");
 		await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';");
 		await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS cover_image_url VARCHAR(255);");
