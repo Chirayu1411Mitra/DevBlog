@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useToast } from '../components/ToastContext';
@@ -13,6 +13,12 @@ const RegisterPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const navigate = useNavigate();
   const { addToast } = useToast();
+
+  useEffect(() => {
+    if (sessionStorage.getItem('token')) {
+      navigate('/', { replace: true });
+    }
+  }, [navigate]);
 
   const handleRegister = async (e) => {
     e.preventDefault();

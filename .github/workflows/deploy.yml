@@ -10,7 +10,7 @@ jobs:
   deploy-backend:
     name: Deploy Backend to EC2
     runs-on: self-hosted
-    steps:
+    steps:   
       - name: Deploy
         run: |
           cd /var/www/devblog
