@@ -17,8 +17,8 @@ jobs:
           git config pull.rebase false
           git pull origin main
           cd server
-          npm ci --production
-          pm2 restart devblog-api
+          docker compose up --build -d
+          docker image prune -f
           echo "Backend deployed"
 
   deploy-frontend:
