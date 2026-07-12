@@ -1,26 +1,30 @@
 import React from 'react';
+import { Btn } from './DesignSystem';
 
 const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = 'Confirm', cancelText = 'Cancel', type = 'danger' }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card confirm-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
-        <div className="modal-header" style={{ textAlign: 'left' }}>
-          <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{title}</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>{message}</p>
+    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
+      <div className="bg-card border border-border shadow-lg rounded-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+        <div className="p-6">
+          <h3 className="text-xl font-semibold mb-2" style={{ fontFamily: "var(--font-display)" }}>{title}</h3>
+          <p className="text-muted-foreground text-[15px] leading-relaxed">{message}</p>
         </div>
-        <div className="modal-actions" style={{ marginTop: '2rem', justifyContent: 'flex-end', gap: '0.75rem' }}>
-          <button className="btn btn-secondary" onClick={onClose}>
+        <div className="px-6 py-4 bg-secondary/50 border-t border-border flex justify-end gap-2">
+          <Btn variant="ghost" onClick={onClose}>
             {cancelText}
-          </button>
-          <button 
-            className={`btn ${type === 'danger' ? 'btn-danger' : 'btn-primary'}`} 
+          </Btn>
+          <button
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              type === 'danger' 
+                ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' 
+                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+            }`}
             onClick={() => {
               onConfirm();
               onClose();
             }}
-            style={type === 'danger' ? { background: 'var(--danger)', color: 'white' } : {}}
           >
             {confirmText}
           </button>

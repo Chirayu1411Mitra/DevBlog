@@ -40,15 +40,15 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="site-shell" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+    <nav className="site-shell flex justify-between items-center mb-6">
       <div className="brand">
-        <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center' }}>
+        <Link to="/" className="flex items-center text-text no-underline">
           <span className="logo"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 3L19 12L5 21V3Z" fill="var(--accent)" /></svg></span>
-          <h1 style={{ margin: 0, marginLeft: 10 }}>DevBlog</h1>
+          <h1 className="ml-2.5 font-bold text-text">DevBlog</h1>
         </Link>
       </div>
 
-      <div className="nav-ctas" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="nav-ctas flex items-center gap-2">
         <label className="theme-toggle" title="Theme" aria-label="Theme toggle">
           <input
             type="checkbox"
@@ -65,19 +65,8 @@ const Navbar = () => {
             <Link to="/create" className="btn">Write</Link>
             <button
               aria-label="Open account menu"
-              className="icon-btn"
+              className="icon-btn w-9 h-9 rounded-full flex items-center justify-center border border-border bg-surface text-text cursor-pointer"
               onClick={openMenu}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: '50%',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid var(--border, #333)',
-                background: 'var(--surface, #1e1e1e)',
-                cursor: 'pointer'
-              }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5z" fill="currentColor" />
@@ -87,7 +76,7 @@ const Navbar = () => {
         ) : (
           <>
             <Link to="/login">Sign in</Link>
-            <Link to="/register" className="btn signup">Sign up</Link>
+            <Link to="/register" className="btn btn-primary ml-4">Sign up</Link>
           </>
         )}
       </div>
@@ -109,18 +98,18 @@ const Navbar = () => {
             aria-label="Account menu"
           >
             <div className="sidepanel-header">
-              <div style={{ fontWeight: 700 }}>Account</div>
+              <div className="font-bold text-text">Account</div>
               <button className="icon-btn" onClick={closeMenu} aria-label="Close menu">×</button>
             </div>
             <div className="sidepanel-content">
-              <button className="sidepanel-item" onClick={() => goTo('/user')}>
+              <button className="sidepanel-item flex w-full items-center pl-4 pr-4" onClick={() => goTo('/user')}>
                 <span>Profile</span>
               </button>
-              <button className="sidepanel-item" onClick={() => goTo('/my-drafts')}>
+              <button className="sidepanel-item flex w-full items-center pl-4 pr-4" onClick={() => goTo('/my-drafts')}>
                 <span>Drafts</span>
               </button>
-              <hr className="sidepanel-sep" />
-              <button className="sidepanel-item danger" onClick={() => { closeMenu(); handleLogout(); }}>
+              <hr className="sidepanel-sep my-4" />
+              <button className="sidepanel-item flex w-full items-center pl-4 pr-4 text-danger" onClick={() => { closeMenu(); handleLogout(); }}>
                 <span>Logout</span>
               </button>
             </div>

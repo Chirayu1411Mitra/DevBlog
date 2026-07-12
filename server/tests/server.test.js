@@ -42,7 +42,7 @@ describe('Server-Level Endpoints', () => {
             const res = await request(app).get('/posts');
 
             expect(res.statusCode).toBe(200);
-            expect(Array.isArray(res.body)).toBe(true);
+            expect(Array.isArray(res.body.posts)).toBe(true);
         });
     });
 
@@ -59,6 +59,6 @@ describe('Server-Level Endpoints', () => {
     });
 
     afterAll(async () => {
-        // DB pool is shared across workers; let Jest --forceExit handle cleanup
+        await db.pool.end();
     });
 });

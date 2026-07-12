@@ -286,5 +286,6 @@ describe('Auth Endpoints', () => {
         try {
             await db.query('DELETE FROM users WHERE username = $1', [testUser.username]);
         } catch (_) { /* ignore */ }
+        await db.pool.end();
     });
 });

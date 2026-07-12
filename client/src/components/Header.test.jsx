@@ -18,17 +18,17 @@ describe('Header Component', () => {
                 <Header />
             </BrowserRouter>
         );
-        expect(screen.getByText('Dev Blog')).toBeInTheDocument();
+        expect(screen.getByText('DevBlog')).toBeInTheDocument();
     });
 
-    it('renders Sign In button when not logged in', async () => {
+    it('renders Sign in button when not logged in', async () => {
         render(
             <BrowserRouter>
                 <Header />
             </BrowserRouter>
         );
         // Wait for potential async effects
-        expect(await screen.findByText('Sign In')).toBeInTheDocument();
-        expect(screen.getByText('Get Started')).toBeInTheDocument();
+        expect(await screen.findByText('Sign in')).toBeInTheDocument();
+        expect(screen.getByText('Get started')).toBeInTheDocument();
     });
 });

@@ -9,7 +9,40 @@ const { protect } = require('../middleware/authMiddleware');
 const router = express.Router();
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const nodemailer = require('nodemailer');
+const rateLimit = require('express-rate-limit');
 
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    message: { message: 'Too many login attempts, please try again after 15 minutes' }
+});
+
+const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 5,
+    message: { message: 'Too many accounts created from this IP, please try again after an hour' }
+});
+
+const forgotPasswordLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 3,
+    message: { message: 'Too many password reset requests from this IP, please try again after an hour' }
+});
+
+const setAuthCookies = (res, token) => {
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie('token', token, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+    res.cookie('isLoggedIn', 'true', {
+        secure: isProd,
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+};
 
 router.get('/github', passport.authenticate('github', { scope: ['user:email', 'read:user'] }));
 
@@ -27,16 +60,23 @@ router.get(
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
             expiresIn: '30d',
         });
-        res.redirect(`${getClientUrl()}/auth/callback?token=${token}`);
+        setAuthCookies(res, token);
+        res.redirect(`${getClientUrl()}/auth/callback`);
     }
 );
 
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        let { username, email, password } = req.body;
         if (!username || !email || !password) {
             return res.status(400).json({ message: 'username, email and password are required' });
         }
+        
+        if (username.length > 30) return res.status(400).json({ message: 'Username cannot exceed 30 characters' });
+        if (email.length > 255) return res.status(400).json({ message: 'Email cannot exceed 255 characters' });
+        if (password.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
+        
+        email = email.toLowerCase();
 
         const existing = await db.query('SELECT id FROM users WHERE email = $1 OR username = $2', [email, username]);
         if (existing.rows.length) {
@@ -52,6 +92,7 @@ router.post('/register', async (req, res) => {
         );
         const user = insert.rows[0];
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+        setAuthCookies(res, token);
         res.json({ token });
     } catch (err) {
         console.error('Register error:', err.message || err);
@@ -60,12 +101,14 @@ router.post('/register', async (req, res) => {
 });
 
 
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
     try {
-        const { email, password } = req.body;
+        let { email, password } = req.body;
         if (!email || !password) {
             return res.status(400).json({ message: 'email and password are required' });
         }
+        
+        email = email.toLowerCase();
 
         const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
         const user = result.rows[0];
@@ -79,6 +122,7 @@ router.post('/login', async (req, res) => {
         }
 
         const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+        setAuthCookies(res, token);
         res.json({ token });
     } catch (err) {
         console.error('Login error:', err.message || err);
@@ -86,6 +130,12 @@ router.post('/login', async (req, res) => {
     }
 });
 
+
+router.post('/logout', (req, res) => {
+    res.clearCookie('token');
+    res.clearCookie('isLoggedIn');
+    res.json({ message: 'Logged out' });
+});
 
 router.get('/me', protect, async (req, res) => {
     try {
@@ -103,9 +153,13 @@ router.get('/me', protect, async (req, res) => {
 router.put('/me', protect, async (req, res) => {
     try {
         const userId = req.user.id;
-        const { username, email, password, currentPassword } = req.body;
+        const { username, email, password, currentPassword, bio, avatar_url, banner_url, headline } = req.body;
 
-        if (!username && !email && !password) {
+        if (bio && bio.length > 500) return res.status(400).json({ message: 'Bio cannot exceed 500 characters' });
+        if (headline && headline.length > 100) return res.status(400).json({ message: 'Headline cannot exceed 100 characters' });
+        if (username && username.length > 30) return res.status(400).json({ message: 'Username cannot exceed 30 characters' });
+
+        if (!username && !email && !password && bio === undefined && avatar_url === undefined && banner_url === undefined && headline === undefined) {
             return res.status(400).json({ message: 'No fields to update' });
         }
 
@@ -132,7 +186,6 @@ router.put('/me', protect, async (req, res) => {
         const fields = [];
         const params = [];
         let idx = 1;
-        const { bio, avatar_url, banner_url, headline } = req.body;
 
         if (username) { fields.push(`username = $${idx++}`); params.push(username); }
         if (email) { fields.push(`email = $${idx++}`); params.push(email); }
@@ -163,7 +216,21 @@ router.put('/me', protect, async (req, res) => {
 router.get('/my-posts', protect, async (req, res) => {
     try {
         const userId = req.user.id;
-        const result = await db.query('SELECT * FROM posts WHERE user_id = $1 AND draft = false ORDER BY created_at DESC', [userId]);
+        const sql = `
+            SELECT 
+                p.*, 
+                u.username, 
+                u.avatar_url,
+                u.headline,
+                (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) AS like_count,
+                (CASE WHEN $1::INTEGER IS NOT NULL AND EXISTS (SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $1) THEN true ELSE false END) AS user_has_liked,
+                (CASE WHEN $1::INTEGER IS NOT NULL AND EXISTS (SELECT 1 FROM saved_posts WHERE post_id = p.id AND user_id = $1) THEN true ELSE false END) AS user_has_saved
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.user_id = $1 AND p.draft = false 
+            ORDER BY p.created_at DESC
+        `;
+        const result = await db.query(sql, [userId]);
         res.json(result.rows);
     } catch (err) {
         console.error('Get my posts error:', err.message || err);
@@ -174,15 +241,22 @@ router.get('/my-posts', protect, async (req, res) => {
 router.get('/me/saved-posts', protect, async (req, res) => {
     try {
         const userId = req.user.id;
-        const result = await db.query(
-            `SELECT p.*, u.username, u.avatar_url 
-             FROM posts p 
-             JOIN saved_posts sp ON p.id = sp.post_id 
-             JOIN users u ON p.user_id = u.id
-             WHERE sp.user_id = $1 
-             ORDER BY sp.created_at DESC`,
-            [userId]
-        );
+        const sql = `
+            SELECT 
+                p.*, 
+                u.username, 
+                u.avatar_url,
+                u.headline,
+                (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) AS like_count,
+                (CASE WHEN $1::INTEGER IS NOT NULL AND EXISTS (SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $1) THEN true ELSE false END) AS user_has_liked,
+                (CASE WHEN $1::INTEGER IS NOT NULL AND EXISTS (SELECT 1 FROM saved_posts WHERE post_id = p.id AND user_id = $1) THEN true ELSE false END) AS user_has_saved
+            FROM posts p
+            JOIN saved_posts sp ON p.id = sp.post_id
+            JOIN users u ON p.user_id = u.id
+            WHERE sp.user_id = $1 
+            ORDER BY sp.created_at DESC
+        `;
+        const result = await db.query(sql, [userId]);
         res.json(result.rows);
     } catch (err) {
         console.error('Get saved posts error:', err.message || err);
@@ -211,7 +285,7 @@ router.post('/verify-password', protect, async (req, res) => {
     }
 });
 
-router.post('/forgot', async (req, res) => {
+router.post('/forgot', forgotPasswordLimiter, async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) return res.status(400).json({ message: 'email is required' });
@@ -252,13 +326,12 @@ router.post('/forgot', async (req, res) => {
             html: `<p>Hello ${user.username || ''},</p><p>You requested a password reset. Click the link below to reset your password:</p><p><a href="${resetLink}">${resetLink}</a></p><p>If you did not request this, ignore this email. Link expires in 1 hour.</p>`
         };
 
-        transporter.sendMail(mailOptions, (err, info) => {
-            if (err) {
-                console.error('Forgot password email error:', err);
-            } else {
-                console.log('Forgot password email sent:', info && info.response);
-            }
-        });
+        try {
+            const info = await transporter.sendMail(mailOptions);
+            console.log('Forgot password email sent:', info && info.response);
+        } catch (err) {
+            console.error('Forgot password email error:', err);
+        }
 
         res.json({ message: 'If that email exists, a reset link has been sent' });
     } catch (err) {

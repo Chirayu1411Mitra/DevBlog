@@ -6,6 +6,7 @@ const multer = require('multer');
 const { S3Client } = require('@aws-sdk/client-s3');
 const multerS3 = require('multer-s3');
 const path = require('path');
+const generateSlug = require('../utils/slugify');
 
 const s3 = new S3Client({
     region: process.env.AWS_REGION,
@@ -44,6 +45,10 @@ router.post('/upload', protect, upload.single('image'), (req, res) => {
 router.get('/', optionalProtect, async (req, res) => {
     try {
         const currentUserId = req.user ? req.user.id : null;
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+        const offset = (page - 1) * limit;
+
         const sql = `
             SELECT 
                 p.*, 
@@ -57,9 +62,12 @@ router.get('/', optionalProtect, async (req, res) => {
             JOIN users u ON p.user_id = u.id
             WHERE p.draft = false 
             ORDER BY p.created_at DESC
+            LIMIT $2 OFFSET $3
         `;
-        const result = await db.query(sql, [currentUserId]);
-        res.json(result.rows);
+        const countResult = await db.query('SELECT COUNT(*) FROM posts WHERE draft = false');
+        const total = parseInt(countResult.rows[0].count, 10);
+        const result = await db.query(sql, [currentUserId, limit, offset]);
+        res.json({ posts: result.rows, total, page, limit, totalPages: Math.ceil(total / limit) });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server error');
@@ -161,13 +169,25 @@ router.get('/tags/popular', async (req, res) => {
     }
 });
 
-router.get('/tag/:tag', async (req, res) => {
+router.get('/tag/:tag', optionalProtect, async (req, res) => {
     try {
         const { tag } = req.params;
-        const result = await db.query(
-            'SELECT posts.*, users.username, users.avatar_url, users.headline FROM posts JOIN users ON posts.user_id = users.id WHERE posts.draft = false AND posts.tags @> ARRAY[$1]::text[] ORDER BY posts.created_at DESC',
-            [tag]
-        );
+        const currentUserId = req.user ? req.user.id : null;
+        const sql = `
+            SELECT 
+                p.*, 
+                u.username, 
+                u.avatar_url,
+                u.headline,
+                (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) AS like_count,
+                (CASE WHEN $2::INTEGER IS NOT NULL AND EXISTS (SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = $2) THEN true ELSE false END) AS user_has_liked,
+                (CASE WHEN $2::INTEGER IS NOT NULL AND EXISTS (SELECT 1 FROM saved_posts WHERE post_id = p.id AND user_id = $2) THEN true ELSE false END) AS user_has_saved
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.draft = false AND p.tags @> ARRAY[$1]::text[] 
+            ORDER BY p.created_at DESC
+        `;
+        const result = await db.query(sql, [tag, currentUserId]);
         res.json(result.rows);
     } catch (err) {
         console.error('Get posts by tag error:', err.message || err);
@@ -175,12 +195,12 @@ router.get('/tag/:tag', async (req, res) => {
     }
 });
 
-router.get('/:id', optionalProtect, async (req, res) => {
+router.get('/:idSlug', optionalProtect, async (req, res) => {
     try {
-        const { id } = req.params;
+        const { idSlug } = req.params;
         const currentUserId = req.user ? req.user.id : null;
 
-        const intId = parseInt(id, 10);
+        const intId = parseInt(idSlug, 10);
         if (Number.isNaN(intId)) {
             return res.status(404).json({ message: 'Post Not Found' });
         }
@@ -212,6 +232,11 @@ router.get('/:id', optionalProtect, async (req, res) => {
             return res.status(404).json({ message: 'Post Not Found' });
         }
 
+        if (!post.draft) {
+            await db.query('UPDATE posts SET view_count = view_count + 1 WHERE id = $1', [intId]);
+            post.view_count = (post.view_count || 0) + 1;
+        }
+
         res.json(post);
     } catch (err) {
         console.error('Get post by ID error:', err.message);
@@ -224,15 +249,20 @@ router.post('/', protect, async (req, res) => {
         const { title, content, draft, tags, cover_image_url } = req.body;
         const authorId = req.user.id;
 
+        if (title && title.length > 200) return res.status(400).json({ message: 'Title cannot exceed 200 characters' });
+        if (content && content.length > 50000) return res.status(400).json({ message: 'Content cannot exceed 50,000 characters' });
+
         let tagsArr = [];
         if (Array.isArray(tags)) tagsArr = tags.map(String);
         else if (typeof tags === 'string' && tags.trim() !== '') tagsArr = tags.split(',').map(t => t.trim()).filter(Boolean);
         tagsArr = tagsArr.map(t => t.toLowerCase()).filter(Boolean);
         tagsArr = Array.from(new Set(tagsArr));
 
+        const slug = generateSlug(title);
+
         const newPost = await db.query(
-            'INSERT INTO posts (title, content, user_id, draft, tags, cover_image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [title, content, authorId, !!draft, tagsArr, cover_image_url]
+            'INSERT INTO posts (title, content, user_id, draft, tags, cover_image_url, slug) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+            [title, content, authorId, !!draft, tagsArr, cover_image_url, slug]
         );
         res.status(201).json(newPost.rows[0]);
     } catch (err) {
@@ -264,10 +294,18 @@ router.put('/:id', protect, async (req, res) => {
         const userId = req.user.id;
         const { title, content, draft, tags, cover_image_url } = req.body;
 
+        if (title && title.length > 200) return res.status(400).json({ message: 'Title cannot exceed 200 characters' });
+        if (content && content.length > 50000) return res.status(400).json({ message: 'Content cannot exceed 50,000 characters' });
+
         const fields = [];
         const params = [];
         let idx = 1;
-        if (title !== undefined) { fields.push(`title = $${idx++}`); params.push(title); }
+        if (title !== undefined) { 
+            fields.push(`title = $${idx++}`); 
+            params.push(title); 
+            fields.push(`slug = $${idx++}`);
+            params.push(generateSlug(title));
+        }
         if (content !== undefined) { fields.push(`content = $${idx++}`); params.push(content); }
         if (draft !== undefined) { fields.push(`draft = $${idx++}`); params.push(!!draft); }
         if (cover_image_url !== undefined) { fields.push(`cover_image_url = $${idx++}`); params.push(cover_image_url); }
@@ -393,6 +431,9 @@ router.post('/:id/comments', protect, async (req, res) => {
         const { content } = req.body;
         if (!content || !content.trim()) {
             return res.status(400).json({ message: 'Comment content is required' });
+        }
+        if (content.length > 2000) {
+            return res.status(400).json({ message: 'Comment cannot exceed 2000 characters' });
         }
 
         const userId = req.user.id;
