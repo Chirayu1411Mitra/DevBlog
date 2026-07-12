@@ -30,7 +30,7 @@ const forgotPasswordLimiter = rateLimit({
 });
 
 const setAuthCookies = (res, token) => {
-    const isProd = process.env.NODE_ENV === 'production';
+    const isProd = (process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
     res.cookie('token', token, {
         httpOnly: true,
         secure: isProd,
@@ -132,7 +132,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 
 
 router.post('/logout', (req, res) => {
-    const isProd = process.env.NODE_ENV === 'production';
+    const isProd = (process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
     res.clearCookie('token', {
         httpOnly: true,
         secure: isProd,
