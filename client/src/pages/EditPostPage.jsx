@@ -13,7 +13,8 @@ import { cn } from '../utils';
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
 
 export default function EditPostPage() {
-  const { id } = useParams();
+  const { idSlug } = useParams();
+  const id = idSlug ? idSlug.split('-')[0] : null;
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState([]);
@@ -28,7 +29,7 @@ export default function EditPostPage() {
   const fileInputRef = useRef(null);
 
   const [preview, setPreview] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [savingAction, setSavingAction] = useState(null);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -90,7 +91,7 @@ export default function EditPostPage() {
 
   const handleSave = async (publish) => {
     try {
-      setSaving(true);
+      setSavingAction(publish ? 'publish' : 'draft');
       const payload = { title, content, tags, draft: !publish, cover_image_url: coverImageUrl };
       const res = await axios.put(`${API_URL}/posts/${id}`, payload);
       setFeedbackMessage(publish ? 'Post published!' : 'Changes saved!');
@@ -101,7 +102,7 @@ export default function EditPostPage() {
       setFeedbackMessage('Failed to save changes.');
       setFeedbackType('error');
     } finally {
-      setSaving(false);
+      setSavingAction(null);
     }
   };
 
@@ -137,10 +138,10 @@ export default function EditPostPage() {
             Preview
           </button>
         </div>
-        <Btn variant="secondary" size="sm" onClick={() => handleSave(false)} loading={saving}>
+        <Btn variant="secondary" size="sm" onClick={() => handleSave(false)} loading={savingAction === 'draft'}>
           Save changes
         </Btn>
-        <Btn variant="primary" size="sm" icon={isDraft ? <Rss size={14} /> : <Save size={14} />} onClick={() => handleSave(true)} loading={saving}>
+        <Btn variant="primary" size="sm" icon={isDraft ? <Rss size={14} /> : <Save size={14} />} onClick={() => handleSave(true)} loading={savingAction === 'publish'}>
           {isDraft ? 'Publish' : 'Save & Exit'}
         </Btn>
       </div>

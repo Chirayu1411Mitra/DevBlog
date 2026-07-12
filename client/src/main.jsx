@@ -12,9 +12,14 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 const originalGet = axios.get;
 axios.get = async (url, config) => {
-  // Do not cache the authentication check so session state is always fresh
   if (url.includes('/auth/me')) {
     return originalGet(url, config);
+  }
+
+  // If we are fetching a specific post, the backend increments the view count.
+  // We clear the cache so that when the user navigates back to the feed, it fetches the updated views!
+  if (url.match(/\/api\/posts\/\d+/)) {
+    cache.clear();
   }
 
   const cacheKey = url + JSON.stringify(config?.params || {});

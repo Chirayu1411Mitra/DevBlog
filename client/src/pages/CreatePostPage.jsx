@@ -24,7 +24,7 @@ const CreatePostPage = () => {
   const [feedbackType, setFeedbackType] = useState('info');
   
   const [preview, setPreview] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [savingAction, setSavingAction] = useState(null);
 
   const handleAddTag = () => {
     if (currentTag && !tags.includes(currentTag)) {
@@ -69,7 +69,7 @@ const CreatePostPage = () => {
       return;
     }
     try {
-      setSaving(true);
+      setSavingAction(isDraft ? 'draft' : 'publish');
       const res = await axios.post(`${API_URL}/posts`, { title, content, draft: isDraft, tags, cover_image_url: coverImageUrl });
       if (isDraft) {
         setFeedbackMessage('Draft saved.');
@@ -85,7 +85,7 @@ const CreatePostPage = () => {
       setFeedbackMessage(error.response?.data?.message || 'Error creating post.');
       setFeedbackType('error');
     } finally {
-      setSaving(false);
+      setSavingAction(null);
     }
   };
 
@@ -119,10 +119,10 @@ const CreatePostPage = () => {
             Preview
           </button>
         </div>
-        <Btn variant="secondary" size="sm" onClick={() => handleSubmit(true)} loading={saving}>
+        <Btn variant="secondary" size="sm" onClick={() => handleSubmit(true)} loading={savingAction === 'draft'}>
           Save draft
         </Btn>
-        <Btn variant="primary" size="sm" icon={<Rss size={14} />} onClick={() => handleSubmit(false)} loading={saving}>Publish</Btn>
+        <Btn variant="primary" size="sm" icon={<Rss size={14} />} onClick={() => handleSubmit(false)} loading={savingAction === 'publish'}>Publish</Btn>
       </div>
 
       <div className="flex-1 overflow-hidden flex">
