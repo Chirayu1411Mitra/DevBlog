@@ -177,5 +177,6 @@ describe('Users Endpoints', () => {
         try {
             await db.query('DELETE FROM users WHERE username IN ($1, $2)', [userA.username, userB.username]);
         } catch (_) { /* ignore */ }
+        await db.pool.end();
     });
 });

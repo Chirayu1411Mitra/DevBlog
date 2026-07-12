@@ -103,3 +103,6 @@ tracked_files.txt
 
 # Vercel configs
 
+# Python scripts
+*.py
+frontend_refactor.py

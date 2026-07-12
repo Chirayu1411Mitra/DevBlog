@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useToast } from '../components/ToastContext';
+import { Terminal } from 'lucide-react';
+import { Btn, Input } from '../components/DesignSystem';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
 
 const RegisterPage = () => {
-  const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const navigate = useNavigate();
-  const { addToast } = useToast();
+  const [feedbackMessage, setFeedbackMessage] = useState(null);
+  const [feedbackType, setFeedbackType] = useState('info');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem('token')) {
+    if (document.cookie.includes('isLoggedIn=true')) {
       navigate('/', { replace: true });
     }
   }, [navigate]);
@@ -23,17 +25,23 @@ const RegisterPage = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      addToast('Passwords do not match.', { type: 'error' });
+      setFeedbackMessage('Passwords do not match.');
+      setFeedbackType('error');
       return;
     }
     try {
+      setLoading(true);
       const response = await axios.post(`${API_URL}/auth/register`, { username, email, password });
-      sessionStorage.setItem('token', response.data.token);
-      addToast('Account created successfully!', { type: 'success' });
+      
+      setFeedbackMessage('Account created successfully!');
+      setFeedbackType('success');
       navigate('/');
     } catch (error) {
       console.error('Registration failed:', error);
-      addToast(error.response?.data?.message || 'Registration failed.', { type: 'error' });
+      setFeedbackMessage(error.response?.data?.message || 'Registration failed.');
+      setFeedbackType('error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -42,93 +50,46 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <div className="logo">
-            <i className="fas fa-feather-alt"></i>
-            <span>DevBlog</span>
+    <div className="min-h-[calc(100vh-56px)] flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-sm">
+        {feedbackMessage && (
+          <div className={`mb-6 p-4 rounded text-sm font-medium ${feedbackType === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-emerald-500/10 text-emerald-500'}`} onClick={() => setFeedbackMessage(null)}>
+            {feedbackMessage}
           </div>
-          <h2>Create Account</h2>
-          <p>Join our community of developers</p>
+        )}
+        <div className="mb-8 text-center">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-4">
+            <Terminal size={18} className="text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "var(--font-display)" }}>Create your account</h1>
+          <p className="text-sm text-muted-foreground mt-1">Join the developer community</p>
         </div>
 
-        <button className="btn btn-github" onClick={handleGitHubLogin}>
-          <i className="fab fa-github"></i>
-          Sign up with GitHub
-        </button>
+        <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+          <Btn variant="outline" fullWidth icon={<Terminal size={16} />} onClick={handleGitHubLogin}>
+            Sign up with GitHub
+          </Btn>
+          
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-border" /><span className="text-xs text-muted-foreground">or email</span><div className="flex-1 h-px bg-border" />
+          </div>
 
-        <div className="divider">
-          <span>or continue with email</span>
+          <form onSubmit={handleRegister} className="space-y-4">
+            <Input label="Username" placeholder="johndoe" type="text" value={username} onChange={setUsername} hint="This will be your public handle" />
+            <Input label="Email" placeholder="you@example.com" type="email" value={email} onChange={setEmail} />
+            <Input label="Password" placeholder="Min. 8 characters" type="password" value={password} onChange={setPassword} />
+            <Input label="Confirm Password" placeholder="Min. 8 characters" type="password" value={confirmPassword} onChange={setConfirmPassword} />
+            
+            <Btn type="submit" variant="primary" fullWidth size="lg" className="mt-2" loading={loading}>Create Account</Btn>
+          </form>
         </div>
 
-        <form onSubmit={handleRegister}>
-          <div className="form-group">
-            <label htmlFor="fullName">Full Name</label>
-            <input
-              type="text"
-              id="fullName"
-              className="form-control"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="John Doe"
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="username">Username</label>
-            <input
-              type="text"
-              id="username"
-              className="form-control"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="johndoe"
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              className="form-control"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              className="form-control"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              className="form-control"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
-          </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>Create Account</button>
-        </form>
-
-        <div className="auth-footer">
-          <p>Already have an account? <Link to="/login">Sign in</Link></p>
-        </div>
+        <p className="text-center text-sm text-muted-foreground mt-5">
+          Already have an account?{" "}
+          <Link to="/login" className="text-primary hover:underline">
+            Sign in
+          </Link>
+        </p>
       </div>
     </div>
   );

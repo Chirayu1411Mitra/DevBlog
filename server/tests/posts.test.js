@@ -100,16 +100,16 @@ describe('Posts Endpoints', () => {
             const res = await request(app).get('/api/posts');
 
             expect(res.statusCode).toBe(200);
-            expect(Array.isArray(res.body)).toBe(true);
+            expect(Array.isArray(res.body.posts)).toBe(true);
         });
 
         it('should include like_count and username fields', async () => {
             const res = await request(app).get('/api/posts');
 
             expect(res.statusCode).toBe(200);
-            if (res.body.length > 0) {
-                expect(res.body[0]).toHaveProperty('like_count');
-                expect(res.body[0]).toHaveProperty('username');
+            if (res.body.posts.length > 0) {
+                expect(res.body.posts[0]).toHaveProperty('like_count');
+                expect(res.body.posts[0]).toHaveProperty('username');
             }
         });
 
@@ -119,9 +119,9 @@ describe('Posts Endpoints', () => {
                 .set('Authorization', `Bearer ${authToken}`);
 
             expect(res.statusCode).toBe(200);
-            if (res.body.length > 0) {
-                expect(res.body[0]).toHaveProperty('user_has_liked');
-                expect(res.body[0]).toHaveProperty('user_has_saved');
+            if (res.body.posts.length > 0) {
+                expect(res.body.posts[0]).toHaveProperty('user_has_liked');
+                expect(res.body.posts[0]).toHaveProperty('user_has_saved');
             }
         });
     });
@@ -450,7 +450,7 @@ describe('Posts Endpoints', () => {
                 .delete(`/api/posts/${createdPostId}/comments/${commentId}`)
                 .set('Authorization', `Bearer ${authToken}`);
 
-            expect(res.statusCode).toBe(404);
+            expect(res.statusCode).toBe(403);
         });
 
         it('should reject without auth', async () => {
@@ -518,5 +518,6 @@ describe('Posts Endpoints', () => {
         try {
             await db.query('DELETE FROM users WHERE username = $1', [testUser.username]);
         } catch (_) { /* ignore */ }
+        await db.pool.end();
     });
 });

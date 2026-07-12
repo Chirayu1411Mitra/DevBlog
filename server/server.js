@@ -35,10 +35,12 @@ if (fs.existsSync(envPath)) {
 const express = require('express');
 const cors = require('cors');
 const passport = require('passport');
+const cookieParser = require('cookie-parser');
 const db = require('./db/db');
 const app = express();
 require('./config/passport')(passport);
 app.use(passport.initialize());
+app.use(cookieParser());
 
 const normalizeOrigin = (value) => {
   if (!value) return '';

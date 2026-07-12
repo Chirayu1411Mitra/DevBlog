@@ -5,22 +5,21 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card confirm-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
-        <div className="modal-header" style={{ textAlign: 'left' }}>
-          <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{title}</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>{message}</p>
+      <div className="modal-card confirm-modal w-[400px]" onClick={e => e.stopPropagation()}>
+        <div className="modal-header text-left">
+          <h3 className="text-lg mb-2">{title}</h3>
+          <p className="text-text-muted text-sm">{message}</p>
         </div>
-        <div className="modal-actions" style={{ marginTop: '2rem', justifyContent: 'flex-end', gap: '0.75rem' }}>
+        <div className="modal-actions mt-6 flex justify-end gap-3">
           <button className="btn btn-secondary" onClick={onClose}>
             {cancelText}
           </button>
-          <button 
-            className={`btn ${type === 'danger' ? 'btn-danger' : 'btn-primary'}`} 
+          <button
+            className={`btn ${type === 'danger' ? 'btn-danger' : 'btn-primary'} text-white bg-${type === 'danger' ? 'danger' : 'accent'} hover:bg-${type === 'danger' ? 'danger/80' : 'accent/80'}`}
             onClick={() => {
               onConfirm();
               onClose();
             }}
-            style={type === 'danger' ? { background: 'var(--danger)', color: 'white' } : {}}
           >
             {confirmText}
           </button>

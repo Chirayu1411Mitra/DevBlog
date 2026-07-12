@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useToast } from './ToastContext';
+import { Camera, X } from 'lucide-react';
+import { Btn, Input } from './DesignSystem';
+import { cn } from '../utils';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
 
@@ -16,8 +18,8 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
         currentPassword: ''
     });
     const [loading, setLoading] = useState(false);
-    const { addToast } = useToast();
-    const token = sessionStorage.getItem('token');
+    const [feedbackMessage, setFeedbackMessage] = useState(null);
+    const [feedbackType, setFeedbackType] = useState('info');
 
     useEffect(() => {
         if (user && isOpen) {
@@ -31,12 +33,12 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
                 password: '',
                 currentPassword: ''
             });
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'auto';
         }
+        return () => { document.body.style.overflow = 'auto'; };
     }, [user, isOpen]);
-
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
 
     const handleFileChange = async (e, field) => {
         const file = e.target.files[0];
@@ -52,14 +54,15 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
             const res = await axios.post(`${API_URL}/posts/upload`, uploadData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
-                    Authorization: `Bearer ${token}`
                 }
             });
             setFormData(prev => ({ ...prev, [field]: res.data.imageUrl }));
-            addToast('Image uploaded', { type: 'success' });
+            setFeedbackMessage('Image uploaded successfully!');
+            setFeedbackType('success');
         } catch (err) {
             console.error(err);
-            addToast(err.response?.data?.message || 'Failed to upload image', { type: 'error' });
+            setFeedbackMessage(err.response?.data?.message || 'Failed to upload image');
+            setFeedbackType('error');
         } finally {
             setLoading(false);
         }
@@ -82,16 +85,16 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
                 payload.currentPassword = formData.currentPassword;
             }
 
-            const res = await axios.put(`${API_URL}/auth/me`, payload, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.put(`${API_URL}/auth/me`, payload);
 
-            addToast('Profile updated successfully', { type: 'success' });
+            setFeedbackMessage('Profile updated successfully!');
+            setFeedbackType('success');
             onUpdate(res.data.user);
             onClose();
         } catch (err) {
             console.error(err);
-            addToast(err.response?.data?.message || 'Failed to update profile', { type: 'error' });
+            setFeedbackMessage(err.response?.data?.message || 'Failed to update profile');
+            setFeedbackType('error');
         } finally {
             setLoading(false);
         }
@@ -100,121 +103,104 @@ const EditProfileModal = ({ isOpen, onClose, user, onUpdate }) => {
     if (!isOpen) return null;
 
     const API_BASE_URL = API_URL.replace('/api', '');
-
     const getImageUrl = (url) => {
         if (!url) return null;
         return url.startsWith('/uploads') ? `${API_BASE_URL}${url}` : url;
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-card edit-profile-modal" onClick={e => e.stopPropagation()}>
-                <button className="modal-close" onClick={onClose}><i className="fas fa-times"></i></button>
-                <div className="modal-header">
-                    <h3>Edit Profile</h3>
-                    <p>Update your personal information and profile appearance</p>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+            <div className="bg-card border border-border rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="sticky top-0 bg-card z-10 flex items-center justify-between px-6 py-4 border-b border-border">
+                    <h2 className="text-xl font-bold text-foreground" style={{ fontFamily: "var(--font-display)" }}>Edit Profile</h2>
+                    <button onClick={onClose} className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+                        <X size={18} />
+                    </button>
                 </div>
-                <div className="modal-body">
-                    <form onSubmit={handleSubmit} className="edit-profile-form">
-                        <div className="modal-profile-header-preview">
-                            <div
-                                className="modal-banner-preview"
-                                style={{
-                                    backgroundImage: formData.banner_url ? `url(${getImageUrl(formData.banner_url)})` : 'none',
-                                    backgroundColor: formData.banner_url ? 'transparent' : 'var(--elevated)'
-                                }}
-                            >
-                                <label className="upload-overlay banner-overlay">
-                                    <i className="fas fa-camera overlay-icon"></i>
-                                    <span>Change Banner</span>
-                                    <input type="file" onChange={(e) => handleFileChange(e, 'banner_url')} accept="image/*" hidden />
+
+                <div className="p-6">
+                    {feedbackMessage && (
+                        <div className={`mb-6 p-4 rounded text-sm font-medium ${feedbackType === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-emerald-500/10 text-emerald-500'}`} onClick={() => setFeedbackMessage(null)}>
+                            {feedbackMessage}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Banner & Avatar section */}
+                        <div>
+                            <div className="relative h-32 rounded-lg bg-secondary border border-border overflow-hidden mb-12">
+                                {formData.banner_url && (
+                                    <img src={getImageUrl(formData.banner_url)} alt="Banner" className="w-full h-full object-cover" />
+                                )}
+                                <label className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer text-white">
+                                    <Camera size={24} />
+                                    <input type="file" onChange={(e) => handleFileChange(e, 'banner_url')} accept="image/*" className="hidden" />
                                 </label>
                             </div>
 
-                            <div className="modal-avatar-wrapper">
+                            <div className="relative w-24 h-24 -mt-24 ml-6 mb-4 rounded-full border-4 border-card bg-secondary z-10 overflow-hidden group">
                                 <img
-                                    src={getImageUrl(formData.avatar_url) || `https://ui-avatars.com/api/?name=${formData.username}`}
-                                    alt="Avatar Preview"
-                                    className="modal-avatar-preview"
+                                    src={getImageUrl(formData.avatar_url) || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.username)}`}
+                                    alt="Avatar"
+                                    className="w-full h-full object-cover"
                                 />
-                                <label className="upload-overlay avatar-overlay">
-                                    <i className="fas fa-camera overlay-icon"></i>
-                                    <input type="file" onChange={(e) => handleFileChange(e, 'avatar_url')} accept="image/*" hidden />
+                                <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer text-white">
+                                    <Camera size={20} />
+                                    <input type="file" onChange={(e) => handleFileChange(e, 'avatar_url')} accept="image/*" className="hidden" />
                                 </label>
                             </div>
                         </div>
 
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Username</label>
-                                <input
-                                    type="text"
-                                    name="username"
-                                    value={formData.username}
-                                    onChange={handleChange}
-                                    className="form-control"
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Headline</label>
-                                <input
-                                    type="text"
-                                    name="headline"
-                                    value={formData.headline}
-                                    onChange={handleChange}
-                                    className="form-control"
-                                    placeholder="e.g. Developer & Writer"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="form-group">
-                            <label>Bio</label>
-                            <textarea
-                                name="bio"
+                        <div className="space-y-4">
+                            <Input
+                                label="Username"
+                                value={formData.username}
+                                onChange={(val) => setFormData(prev => ({ ...prev, username: val }))}
+                                required
+                            />
+                            <Input
+                                label="Headline"
+                                value={formData.headline}
+                                onChange={(val) => setFormData(prev => ({ ...prev, headline: val }))}
+                                placeholder="e.g. Developer & Writer"
+                            />
+                            <Input
+                                label="Bio"
                                 value={formData.bio}
-                                onChange={handleChange}
-                                className="form-control"
-                                rows="3"
+                                onChange={(val) => setFormData(prev => ({ ...prev, bio: val }))}
+                                textarea
                                 placeholder="Tell us about yourself..."
                             />
                         </div>
 
-                        <hr className="divider" />
-                        <h4>Change Password <span className="optional-text">(Optional)</span></h4>
-
-                        <div className="form-group">
-                            <label>New Password</label>
-                            <input
-                                type="password"
-                                name="password"
-                                value={formData.password}
-                                onChange={handleChange}
-                                className="form-control"
-                                placeholder="Leave blank to keep current"
-                            />
-                        </div>
-                        {formData.password && (
-                            <div className="form-group">
-                                <label>Current Password</label>
-                                <input
+                        <div className="border-t border-border pt-6 mt-6">
+                            <h3 className="text-sm font-semibold text-foreground mb-4">Change Password (Optional)</h3>
+                            <div className="space-y-4">
+                                <Input
+                                    label="New Password"
                                     type="password"
-                                    name="currentPassword"
-                                    value={formData.currentPassword}
-                                    onChange={handleChange}
-                                    className="form-control"
-                                    placeholder="Required to change password"
-                                    required
+                                    value={formData.password}
+                                    onChange={(val) => setFormData(prev => ({ ...prev, password: val }))}
+                                    placeholder="Leave blank to keep current"
                                 />
+                                {formData.password && (
+                                    <Input
+                                        label="Current Password"
+                                        type="password"
+                                        value={formData.currentPassword}
+                                        onChange={(val) => setFormData(prev => ({ ...prev, currentPassword: val }))}
+                                        placeholder="Required to change password"
+                                        required
+                                    />
+                                )}
                             </div>
-                        )}
+                        </div>
 
-                        <div className="modal-actions">
-                            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-                            <button type="submit" className="btn btn-primary" disabled={loading}>
-                                {loading ? 'Saving...' : 'Save Changes'}
-                            </button>
+                        <div className="flex gap-3 justify-end pt-2">
+                            <Btn variant="ghost" onClick={onClose} type="button">Cancel</Btn>
+                            <Btn variant="primary" type="submit" disabled={loading}>
+                                {loading ? 'Saving…' : 'Save Changes'}
+                            </Btn>
                         </div>
                     </form>
                 </div>

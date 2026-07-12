@@ -1,7 +1,13 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '../components/ToastContext';
+import { ArrowLeft, CheckCircle, Hash, Image as ImageIcon, Rss } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Btn, TagBadge } from '../components/DesignSystem';
+import { cn } from '../utils';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
 
@@ -13,8 +19,12 @@ const CreatePostPage = () => {
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
-  const token = sessionStorage.getItem('token');
-  const { addToast } = useToast();
+  const token = document.cookie.includes('isLoggedIn=true');
+  const [feedbackMessage, setFeedbackMessage] = useState(null);
+  const [feedbackType, setFeedbackType] = useState('info');
+  
+  const [preview, setPreview] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const handleAddTag = () => {
     if (currentTag && !tags.includes(currentTag)) {
@@ -39,123 +49,211 @@ const CreatePostPage = () => {
       const res = await axios.post(`${API_URL}/posts/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`,
         },
       });
       setCoverImageUrl(res.data.imageUrl);
-      addToast('Image uploaded successfully!', { type: 'success' });
+      setFeedbackMessage('Image uploaded successfully!');
+      setFeedbackType('success');
     } catch (error) {
       console.error('Image upload failed:', error);
-      addToast('Image upload failed.', { type: 'error' });
+      setFeedbackMessage('Image upload failed.');
+      setFeedbackType('error');
     }
   };
 
   const handleSubmit = async (isDraft) => {
     if (!token) {
-      addToast('You must be logged in.', { type: 'error' });
+      setFeedbackMessage('You must be logged in.');
+      setFeedbackType('error');
       navigate('/login');
       return;
     }
     try {
-      const res = await axios.post(`${API_URL}/posts`, { title, content, draft: isDraft, tags, cover_image_url: coverImageUrl }, { 
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      setSaving(true);
+      const res = await axios.post(`${API_URL}/posts`, { title, content, draft: isDraft, tags, cover_image_url: coverImageUrl });
       if (isDraft) {
-        addToast('Draft saved.', { type: 'info' });
+        setFeedbackMessage('Draft saved.');
+        setFeedbackType('info');
         navigate('/my-drafts');
       } else {
-        addToast('Post published!', { type: 'success' });
-        navigate(`/post/${res.data.id}`);
+        setFeedbackMessage('Post published!');
+        setFeedbackType('success');
+        navigate(`/post/${res.data.id}${res.data.slug ? `-${res.data.slug}` : ''}`);
       }
     } catch (error) {
       console.error('Failed to create post:', error);
-      addToast(error.response?.data?.message || 'Error creating post.', { type: 'error' });
+      setFeedbackMessage(error.response?.data?.message || 'Error creating post.');
+      setFeedbackType('error');
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <div className="reading-container" style={{ marginTop: '2rem' }}>
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h2>Create New Post</h2>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button className="btn btn-secondary" onClick={() => handleSubmit(true)}>Save Draft</button>
-            <button className="btn btn-primary" onClick={() => handleSubmit(false)}>Publish</button>
+    <div className="flex flex-col h-[calc(100vh-56px)]">
+      {feedbackMessage && (
+        <div className="fixed top-20 right-4 z-50">
+          <div className={`p-4 rounded shadow-lg text-sm font-medium ${feedbackType === 'error' ? 'bg-destructive text-destructive-foreground' : 'bg-emerald-500 text-white'}`} onClick={() => setFeedbackMessage(null)}>
+            {feedbackMessage}
           </div>
         </div>
+      )}
 
-        <div className="editor-form">
-          <div className="editor-form-group">
-            <label htmlFor="cover-image">Cover Image</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageUpload}
-                style={{ display: 'none' }}
-                accept="image/*"
-              />
-              <button type="button" className="btn-upload" onClick={() => fileInputRef.current.click()}>
-                <i className="fas fa-upload"></i> Upload Image
-              </button>
-              <span className="upload-hint">Max size: 5MB (JPG, PNG, WebP)</span>
-            </div>
-            {coverImageUrl && (
-              <div className="image-preview">
-                <img src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:6969'}${coverImageUrl}`} alt="Cover Preview" />
+      {/* Editor toolbar */}
+      <div className="border-b border-border bg-card px-4 sm:px-6 py-3 flex items-center gap-3">
+        <button onClick={() => navigate("/my-drafts")} className="text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft size={16} />
+        </button>
+        <div className="flex-1" />
+        <div className="flex items-center gap-1 bg-secondary rounded p-0.5">
+          <button
+            onClick={() => setPreview(false)}
+            className={cn("px-3 py-1 text-sm rounded transition-colors", !preview ? "bg-card text-foreground shadow-sm font-medium" : "text-muted-foreground hover:text-foreground")}
+          >
+            Write
+          </button>
+          <button
+            onClick={() => setPreview(true)}
+            className={cn("px-3 py-1 text-sm rounded transition-colors", preview ? "bg-card text-foreground shadow-sm font-medium" : "text-muted-foreground hover:text-foreground")}
+          >
+            Preview
+          </button>
+        </div>
+        <Btn variant="secondary" size="sm" onClick={() => handleSubmit(true)} loading={saving}>
+          Save draft
+        </Btn>
+        <Btn variant="primary" size="sm" icon={<Rss size={14} />} onClick={() => handleSubmit(false)} loading={saving}>Publish</Btn>
+      </div>
+
+      <div className="flex-1 overflow-hidden flex">
+        {/* Write pane */}
+        {!preview && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8">
+              {/* Cover Image */}
+              <div className="mb-6">
+                <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
+                {!coverImageUrl ? (
+                  <button onClick={() => fileInputRef.current.click()} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors border border-dashed border-border hover:border-primary/50 rounded-lg w-full p-6 justify-center">
+                    <ImageIcon size={18} /> Add cover image
+                  </button>
+                ) : (
+                  <div className="relative group rounded-lg overflow-hidden border border-border">
+                    <img src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:6969'}${coverImageUrl}`} alt="Cover Preview" className="w-full h-auto max-h-64 object-cover" />
+                    <button onClick={() => setCoverImageUrl('')} className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded hover:bg-destructive transition-colors">
+                      &times;
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          <div className="editor-form-group">
-            <label htmlFor="title">Title</label>
-            <input
-              type="text"
-              id="title"
-              className="editor-input"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter your post title..."
-              required
-            />
-          </div>
-
-          <div className="editor-form-group">
-            <label htmlFor="tags">Tags</label>
-            <div className="tag-input-container">
-              <input
-                type="text"
-                id="tags"
-                className="editor-input"
-                value={currentTag}
-                onChange={(e) => setCurrentTag(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                placeholder="Add a tag..."
+              {/* Title */}
+              <textarea
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Article title…"
+                rows={2}
+                className="w-full text-3xl font-bold text-foreground bg-transparent placeholder:text-muted-foreground/40 resize-none focus:outline-none leading-tight mb-4"
+                style={{ fontFamily: "var(--font-display)" }}
               />
-              <button type="button" className="btn btn-dark" onClick={handleAddTag}>Add</button>
-            </div>
-            <div className="tag-list-editor">
-              {tags.map((tag, index) => (
-                <span key={index} className="tag-pill-editor">
-                  #{tag} <button onClick={() => handleRemoveTag(tag)}>&times;</button>
-                </span>
-              ))}
-            </div>
-          </div>
 
-          <div className="editor-form-group">
-            <label htmlFor="content">Content</label>
-            <textarea
-              id="content"
-              className="editor-textarea"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Write your post content here... (Markdown supported)"
-              rows={15}
-              required
-            />
+              {/* Tags */}
+              <div className="flex items-center gap-2 mb-6 pb-4 border-b border-border flex-wrap">
+                <Hash size={14} className="text-muted-foreground flex-shrink-0" />
+                <div className="flex flex-wrap gap-1.5">
+                  {tags.map(tag => (
+                    <TagBadge key={tag} label={tag} active onClick={() => handleRemoveTag(tag)} />
+                  ))}
+                </div>
+                <input
+                  value={currentTag}
+                  onChange={(e) => setCurrentTag(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }}
+                  placeholder="Add tags (press Enter)…"
+                  className="flex-1 min-w-[200px] text-sm font-mono text-muted-foreground bg-transparent focus:outline-none placeholder:text-muted-foreground/50 focus:text-foreground transition-colors"
+                />
+              </div>
+
+              {/* Markdown toolbar */}
+              <div className="flex items-center gap-1 mb-4 flex-wrap">
+                {[
+                  ["B", "**bold**"], ["I", "_italic_"], ["H2", "## Heading"],
+                  ["`code`", "`code`"], ["```", "```\n\n```"],
+                ].map(([label, syntax]) => (
+                  <button
+                    key={label}
+                    onClick={() => setContent((c) => c + "\n" + syntax)}
+                    className="px-2 py-1 text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-secondary rounded transition-colors border border-transparent hover:border-border"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Content */}
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Write your article in Markdown…"
+                className="w-full min-h-[50vh] text-[15px] text-foreground bg-transparent placeholder:text-muted-foreground/40 resize-none focus:outline-none leading-relaxed font-mono"
+                spellCheck={false}
+              />
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Preview pane */}
+        {preview && (
+          <div className="flex-1 overflow-y-auto bg-[#07070A]/50">
+            <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8">
+              {coverImageUrl && (
+                <div className="mb-8 rounded-xl overflow-hidden border border-border">
+                  <img src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:6969'}${coverImageUrl}`} alt="Cover" className="w-full h-auto max-h-[500px] object-cover" />
+                </div>
+              )}
+              <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4 leading-tight" style={{ fontFamily: "var(--font-display)" }}>
+                {title || "Untitled article"}
+              </h1>
+              {tags.length > 0 && (
+                <div className="flex gap-2 flex-wrap mb-6 pb-5 border-b border-border">
+                  {tags.map((t) => <TagBadge key={t} label={t} />)}
+                </div>
+              )}
+              <div className="prose-sm leading-7 text-foreground space-y-5 text-[15px]">
+                <ReactMarkdown
+                  components={{
+                    code({ inline, className, children, ...props }) {
+                      const match = /language-(\w+)/.exec(className || '');
+                      return !inline && match ? (
+                        <div className="relative my-6">
+                          <SyntaxHighlighter
+                            style={oneDark}
+                            language={match[1]}
+                            PreTag="div"
+                            className="rounded-lg !bg-[#0D0D12] dark:!bg-[#07070A] !text-[#C8C8D8] !text-[13px] !p-4 !m-0 !border !border-border"
+                            {...props}
+                          >
+                            {String(children).replace(/\n$/, '')}
+                          </SyntaxHighlighter>
+                        </div>
+                      ) : (
+                        <code className="font-mono text-[13px] bg-secondary px-1.5 py-0.5 rounded text-primary" {...props}>
+                          {children}
+                        </code>
+                      );
+                    },
+                    h1({ children, ...props }) { return <h1 className="text-3xl font-bold text-foreground mt-8 mb-4" style={{ fontFamily: "var(--font-display)" }} {...props}>{children}</h1>; },
+                    h2({ children, ...props }) { return <h2 className="text-2xl font-bold text-foreground mt-8 mb-4" style={{ fontFamily: "var(--font-display)" }} {...props}>{children}</h2>; },
+                    h3({ children, ...props }) { return <h3 className="text-xl font-bold text-foreground mt-6 mb-3" style={{ fontFamily: "var(--font-display)" }} {...props}>{children}</h3>; }
+                  }}
+                  rehypePlugins={[rehypeSanitize]}
+                >
+                  {content}
+                </ReactMarkdown>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

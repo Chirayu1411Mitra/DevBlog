@@ -1,44 +1,73 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { X, UserMinus } from 'lucide-react';
+import { Avi, Btn } from './DesignSystem';
+import Loader from './Loader';
+
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
 
 const UserListModal = ({ isOpen, onClose, title, users, loading, actionType, onAction }) => {
+    useEffect(() => {
+        if (isOpen) document.body.style.overflow = 'hidden';
+        else document.body.style.overflow = 'auto';
+        return () => { document.body.style.overflow = 'auto'; };
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
+    const API_BASE_URL = API_URL.replace('/api', '');
+    const getImageUrl = (url) => {
+        if (!url) return null;
+        return url.startsWith('/uploads') ? `${API_BASE_URL}${url}` : url;
+    };
+
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-card user-list-modal" onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h3>{title}</h3>
-                    <button className="modal-close" onClick={onClose}><i className="fas fa-times"></i></button>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+            <div className="bg-card border border-border rounded-xl w-full max-w-sm max-h-[80vh] flex flex-col overflow-hidden shadow-xl" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card z-10">
+                    <h3 className="text-base font-semibold text-foreground">{title}</h3>
+                    <button onClick={onClose} className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors">
+                        <X size={16} />
+                    </button>
                 </div>
-                <div className="modal-body">
+                
+                <div className="flex-1 overflow-y-auto p-4">
                     {loading ? (
-                        <div className="loading-spinner"></div>
+                        <div className="flex justify-center py-10"><Loader /></div>
                     ) : users.length === 0 ? (
-                        <p className="no-users-found">No users found.</p>
+                        <p className="text-center text-sm text-muted-foreground py-10">No users found.</p>
                     ) : (
-                        <ul className="user-list">
+                        <ul className="space-y-3">
                             {users.map(user => (
-                                <li key={user.id} className="user-list-item">
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '1rem' }}>
-                                        <Link to={`/user/${user.username}`} className="user-link" onClick={onClose} style={{ flex: 1 }}>
+                                <li key={user.id} className="flex items-center justify-between gap-3">
+                                    <Link to={`/user/${user.username}`} className="flex items-center gap-3 flex-1 min-w-0 group" onClick={onClose}>
+                                        {user.avatar_url ? (
                                             <img
-                                                src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.username}&background=random`}
+                                                src={getImageUrl(user.avatar_url)}
                                                 alt={user.username}
-                                                className="user-avatar-small"
+                                                className="w-10 h-10 rounded-full object-cover border border-border group-hover:border-primary transition-colors flex-shrink-0"
                                             />
-                                            <span className="user-username">{user.username}</span>
-                                        </Link>
-                                        {actionType && (
-                                            <button
-                                                className="btn btn-sm btn-outline-danger"
-                                                onClick={() => onAction(user.id)}
-                                                style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }}
-                                            >
-                                                {actionType === 'remove' ? 'Remove' : 'Unfollow'}
-                                            </button>
+                                        ) : (
+                                            <div className="group-hover:opacity-80 transition-opacity">
+                                                <Avi initials={(user.username || '?').charAt(0).toUpperCase()} size="sm" />
+                                            </div>
                                         )}
-                                    </div>
+                                        <div className="min-w-0">
+                                            <div className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">{user.username}</div>
+                                            {user.headline && <div className="text-xs text-muted-foreground truncate">{user.headline}</div>}
+                                        </div>
+                                    </Link>
+                                    
+                                    {actionType && (
+                                        <Btn
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-xs py-1 px-2 h-auto text-destructive border-destructive/30 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive flex-shrink-0"
+                                            onClick={() => onAction(user.id)}
+                                        >
+                                            {actionType === 'remove' ? 'Remove' : 'Unfollow'}
+                                        </Btn>
+                                    )}
                                 </li>
                             ))}
                         </ul>

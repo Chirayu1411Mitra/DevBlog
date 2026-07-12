@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useToast } from '../components/ToastContext';
+import { Edit3 } from 'lucide-react';
 import PostCard from '../components/PostCard';
 import Loader from '../components/Loader';
 import UserListModal from '../components/UserListModal';
 import EditProfileModal from '../components/EditProfileModal';
+import { Avi, Btn } from '../components/DesignSystem';
+import { fmt } from '../utils';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:6969/api';
 
@@ -26,8 +28,9 @@ const UserPage = () => {
   const [modalTitle, setModalTitle] = useState('');
 
   const navigate = useNavigate();
-  const { addToast } = useToast();
-  const token = sessionStorage.getItem('token');
+  const [feedbackMessage, setFeedbackMessage] = useState(null);
+  const [feedbackType, setFeedbackType] = useState('info');
+  const token = document.cookie.includes('isLoggedIn=true');
 
   // Get current user info for "Edit Profile" check
   const [currentUsername, setCurrentUsername] = useState(null);
@@ -36,9 +39,7 @@ const UserPage = () => {
     const fetchMe = async () => {
       if (token) {
         try {
-          const res = await axios.get(`${API_URL}/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const res = await axios.get(`${API_URL}/auth/me`);
           setCurrentUsername(res.data.user.username);
         } catch (e) { console.error(e); }
       }
@@ -49,11 +50,10 @@ const UserPage = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const response = await axios.get(`${API_URL}/users/${username}`, { headers });
+        const response = await axios.get(`${API_URL}/users/${username}`);
         setProfile(response.data);
         setIsFollowing(response.data.user.is_following);
-        setFollowersCount(parseInt(response.data.user.followers_count, 10));
+        setFollowersCount(parseInt(response.data.user.followers_count, 10) || 0);
       } catch (err) {
         setError('Failed to load profile.');
         console.error(err);
@@ -66,19 +66,20 @@ const UserPage = () => {
 
   const handleFollow = async () => {
     if (!token) {
-      addToast('Please log in to follow users.', { type: 'info' });
+      setFeedbackMessage('Please log in to follow users.');
+      setFeedbackType('info');
       navigate('/login');
       return;
     }
     try {
-      const response = await axios.post(`${API_URL}/users/${profile.user.id}/follow`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.post(`${API_URL}/users/${profile.user.id}/follow`);
       setIsFollowing(response.data.following);
       setFollowersCount(prev => response.data.following ? prev + 1 : prev - 1);
-      addToast(response.data.message, { type: 'success' });
+      setFeedbackMessage(response.data.message);
+      setFeedbackType('success');
     } catch (error) {
-      addToast(error.response?.data?.message || 'Action failed', { type: 'error' });
+      setFeedbackMessage(error.response?.data?.message || 'Action failed');
+      setFeedbackType('error');
     }
   };
 
@@ -117,7 +118,8 @@ const UserPage = () => {
       setModalUsers(res.data);
     } catch (err) {
       console.error(err);
-      addToast('Failed to fetch user list', { type: 'error' });
+      setFeedbackMessage('Failed to fetch user list');
+      setFeedbackType('error');
     } finally {
       setModalLoading(false);
     }
@@ -125,36 +127,36 @@ const UserPage = () => {
 
   const handleUnfollowUser = async (targetUserId) => {
     try {
-      await axios.post(`${API_URL}/users/${targetUserId}/follow`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.post(`${API_URL}/users/${targetUserId}/follow`);
       setModalUsers(prev => prev.filter(u => u.id !== targetUserId));
-      addToast('Unfollowed user', { type: 'success' });
+      setFeedbackMessage('Unfollowed user');
+      setFeedbackType('success');
     } catch (err) {
       console.error(err);
-      addToast('Failed to unfollow', { type: 'error' });
+      setFeedbackMessage('Failed to unfollow');
+      setFeedbackType('error');
     }
   };
 
   const handleRemoveFollower = async (followerId) => {
     try {
-      await axios.delete(`${API_URL}/users/followers/${followerId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.delete(`${API_URL}/users/followers/${followerId}`);
       setModalUsers(prev => prev.filter(u => u.id !== followerId));
       setFollowersCount(prev => prev - 1);
-      addToast('Follower removed', { type: 'success' });
+      setFeedbackMessage('Follower removed');
+      setFeedbackType('success');
     } catch (err) {
       console.error(err);
-      addToast('Failed to remove follower', { type: 'error' });
+      setFeedbackMessage('Failed to remove follower');
+      setFeedbackType('error');
     }
   };
 
-  if (loading) return <Loader />;
+  if (loading) return <div className="flex justify-center py-20"><Loader /></div>;
   if (error) return (
-    <div className="main-container text-center" style={{ marginTop: '4rem' }}>
-      <p style={{ color: 'var(--danger)' }}>{error}</p>
-      <button className="btn btn-secondary" style={{ marginTop: '1rem' }} onClick={() => navigate('/')}>Go Home</button>
+    <div className="max-w-4xl mx-auto text-center mt-16 px-4">
+      <p className="text-destructive mb-4">{error}</p>
+      <Btn variant="secondary" onClick={() => navigate('/')}>Go Home</Btn>
     </div>
   );
 
@@ -168,74 +170,85 @@ const UserPage = () => {
     return url.startsWith('/uploads') ? `${API_BASE_URL}${url}` : url;
   };
 
-  const renderProfileActions = () => {
-    if (isOwnProfile) {
-      return (
-        <button className="btn btn-secondary" onClick={handleEditProfile}>
-          Edit Profile
-        </button>
-      );
-    } else {
-      return (
-        <button className="btn btn-primary" onClick={handleFollow}>
-          {isFollowing ? 'Unfollow' : 'Follow'}
-        </button>
-      );
-    }
-  };
+  const avatarUrl = getImageUrl(user.avatar_url);
 
   return (
-    <div className="main-container user-page" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
-      <div
-        className="profile-header"
-        style={{
-          backgroundImage: getImageUrl(user.banner_url)
-            ? `linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.5)), url(${getImageUrl(user.banner_url)})`
-            : 'linear-gradient(135deg, var(--accent), #4338ca)'
-        }}
-      >
-        <div className="profile-info-container">
-          <img
-            src={getImageUrl(user.avatar_url) || `https://ui-avatars.com/api/?name=${user.username}&background=random`}
-            alt={user.username}
-            className="profile-avatar"
-          />
-          <div className="profile-details">
-            <h1 className="profile-username">{user.username}</h1>
-            {user.headline && <p style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '0.9rem', marginTop: '0.25rem' }}>{user.headline}</p>}
-            {user.bio && <p className="profile-bio">{user.bio}</p>}
-            <div className="profile-stats">
-              <span onClick={() => openUserList('followers')} className="clickable">
-                <strong>{followersCount || 0}</strong> Followers
-              </span>
-              <span onClick={() => openUserList('following')} className="clickable">
-                <strong>{user.following_count || 0}</strong> Following
-              </span>
-              <span><strong>{posts.length}</strong> Posts</span>
-            </div>
-            <div className="profile-actions" style={{ marginTop: '0.75rem' }}>
-              {renderProfileActions()}
-            </div>
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+      {feedbackMessage && (
+        <div className={`mb-6 p-4 rounded text-sm font-medium ${feedbackType === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-emerald-500/10 text-emerald-500'}`} onClick={() => setFeedbackMessage(null)}>
+          {feedbackMessage}
+        </div>
+      )}
+
+      {/* Banner */}
+      {user.banner_url && (
+        <div style={{
+          height: '200px',
+          borderRadius: 'var(--radius)',
+          backgroundImage: `url(${getImageUrl(user.banner_url)})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          marginBottom: '2rem',
+          border: '1px solid var(--border)',
+        }} />
+      )}
+
+      {/* Profile header */}
+      <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-end mb-8 pb-8 border-b border-border">
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={user.username} className="w-20 h-20 rounded-full object-cover border border-border flex-shrink-0" />
+        ) : (
+          <Avi initials={(user.username || '?').charAt(0).toUpperCase()} size="xl" />
+        )}
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "var(--font-display)" }}>{user.username}</h1>
+          {user.headline ? (
+            <p className="text-sm font-mono text-muted-foreground">{user.headline}</p>
+          ) : (
+            <p className="text-sm font-mono text-muted-foreground">@{user.username}</p>
+          )}
+          {user.bio && (
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-lg">{user.bio}</p>
+          )}
+          <div className="flex items-center gap-5 mt-3 text-sm">
+            <button onClick={() => openUserList('followers')} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+              <strong className="text-foreground font-semibold">{fmt(followersCount)}</strong> followers
+            </button>
+            <button onClick={() => openUserList('following')} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+              <strong className="text-foreground font-semibold">{fmt(user.following_count || 0)}</strong> following
+            </button>
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <strong className="text-foreground font-semibold">{posts.length}</strong> stories
+            </span>
           </div>
         </div>
+        
+        {isOwnProfile ? (
+          <Btn variant="outline" icon={<Edit3 size={14} />} onClick={handleEditProfile}>Edit profile</Btn>
+        ) : (
+          <Btn variant={isFollowing ? "secondary" : "primary"} onClick={handleFollow}>
+            {isFollowing ? 'Unfollow' : 'Follow'}
+          </Btn>
+        )}
       </div>
 
-      <div className="profile-page-body">
-        <div className="post-grid-header" style={{ marginBottom: '1.5rem' }}>
-          <h3>{isOwnProfile ? 'My Stories' : `${user.username}'s Stories`}</h3>
-        </div>
+      {/* Articles */}
+      <div>
+        <h3 className="text-base font-semibold text-foreground mb-4" style={{ fontFamily: "var(--font-display)" }}>
+          {isOwnProfile ? 'My Stories' : `${user.username}'s Stories`}
+        </h3>
         
         {posts.length === 0 ? (
-          <div className="card text-center" style={{ padding: '5rem 2rem' }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>No stories published yet.</p>
+          <div className="bg-card border border-border rounded-lg p-12 text-center">
+            <p className="text-muted-foreground mb-4">No stories published yet.</p>
             {isOwnProfile && (
-              <button className="btn btn-primary" style={{ marginTop: '1.5rem' }} onClick={() => navigate('/create')}>Create First Story</button>
+              <Btn variant="primary" onClick={() => navigate('/create')}>Create First Story</Btn>
             )}
           </div>
         ) : (
-          <div className="post-grid">
+          <div className="grid sm:grid-cols-2 gap-4">
             {posts.map(post => (
-              <PostCard key={post.id} post={{ ...post, username: user.username, avatar_url: user.avatar_url }} token={token} />
+              <PostCard key={post.id} post={{ ...post, username: user.username, avatar_url: user.avatar_url }} />
             ))}
           </div>
         )}

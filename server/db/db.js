@@ -31,7 +31,7 @@ pool.connect().then(client => {
 		await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS draft BOOLEAN DEFAULT FALSE;");
 		await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';");
 		await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS cover_image_url VARCHAR(255);");
-
+		await pool.query("ALTER TABLE posts ADD COLUMN IF NOT EXISTS slug VARCHAR(255);");
 		await pool.query(`CREATE TABLE IF NOT EXISTS post_likes (
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
