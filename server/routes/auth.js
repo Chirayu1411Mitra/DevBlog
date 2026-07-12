@@ -34,12 +34,12 @@ const setAuthCookies = (res, token) => {
     res.cookie('token', token, {
         httpOnly: true,
         secure: isProd,
-        sameSite: 'lax',
+        sameSite: isProd ? 'none' : 'lax',
         maxAge: 30 * 24 * 60 * 60 * 1000
     });
     res.cookie('isLoggedIn', 'true', {
         secure: isProd,
-        sameSite: 'lax',
+        sameSite: isProd ? 'none' : 'lax',
         maxAge: 30 * 24 * 60 * 60 * 1000
     });
 };
@@ -132,8 +132,16 @@ router.post('/login', loginLimiter, async (req, res) => {
 
 
 router.post('/logout', (req, res) => {
-    res.clearCookie('token');
-    res.clearCookie('isLoggedIn');
+    const isProd = process.env.NODE_ENV === 'production';
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? 'none' : 'lax'
+    });
+    res.clearCookie('isLoggedIn', {
+        secure: isProd,
+        sameSite: isProd ? 'none' : 'lax'
+    });
     res.json({ message: 'Logged out' });
 });
 
